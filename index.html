@@ -1,0 +1,5231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>UMBRA DUEL — Shadows of the Eclipse</title>
+<style>
+  :root {
+    --bg-abyss: #050508;
+    --panel-bg: rgba(12, 12, 18, 0.88);
+    --panel-border: rgba(255, 255, 255, 0.12);
+    --gold: #f5b942;
+    --gold-dim: #b38020;
+    --crimson: #ff2e55;
+    --cyan: #00e5ff;
+    --text-main: #f3f4f6;
+    --text-muted: #9ca3af;
+    --accent: #ff3366;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg-abyss);
+    color: var(--text-main);
+    font-family: "Segoe UI", "Trebuchet MS", system-ui, -apple-system, sans-serif;
+    touch-action: none;
+  }
+
+  #game-root {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #050508;
+  }
+
+  #game-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* Top quick utility bar during menus & combat */
+  #top-controls {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    z-index: 35;
+    display: flex;
+    gap: 8px;
+  }
+
+  .icon-btn {
+    background: rgba(10, 10, 16, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #f3f4f6;
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+    transition: transform 0.12s ease, border-color 0.15s ease, background 0.15s ease;
+  }
+
+  .icon-btn:hover {
+    background: rgba(28, 28, 42, 0.9);
+    border-color: var(--gold);
+    transform: translateY(-1px);
+  }
+
+  .icon-btn:active {
+    transform: scale(0.95);
+  }
+
+  /* UI Overlay Screens */
+  .screen {
+    position: absolute;
+    inset: 0;
+    z-index: 25;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    background: radial-gradient(circle at center, rgba(8, 8, 14, 0.38) 0%, rgba(4, 4, 9, 0.84) 100%);
+  }
+
+  .screen.active {
+    display: flex;
+  }
+
+  .panel {
+    width: min(960px, 96vw);
+    max-height: 90vh;
+    overflow-y: auto;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+    padding: 24px 28px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+  }
+
+  .panel::-webkit-scrollbar {
+    width: 6px;
+  }
+  .panel::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+  }
+
+  /* Main Menu styling */
+  .main-menu-box {
+    text-align: center;
+    width: min(500px, 94vw);
+    background: linear-gradient(180deg, rgba(12, 12, 20, 0.82) 0%, rgba(7, 7, 12, 0.92) 100%);
+    border: 1px solid rgba(245, 185, 66, 0.28);
+  }
+
+  .game-title {
+    font-size: clamp(34px, 6vw, 56px);
+    font-weight: 900;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    background: linear-gradient(180deg, #ffffff 10%, #f5b942 58%, #ff2e55 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 4px 18px rgba(255, 46, 85, 0.4));
+    line-height: 1.05;
+  }
+
+  .game-subtitle {
+    font-size: 12px;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-top: 6px;
+    margin-bottom: 18px;
+  }
+
+  .status-pill-row {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+
+  .status-pill {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    padding: 5px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .coin-text {
+    color: var(--gold);
+    font-weight: 800;
+  }
+
+  .menu-btn-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+  }
+
+  .btn {
+    appearance: none;
+    background: linear-gradient(180deg, rgba(35, 35, 50, 0.95) 0%, rgba(20, 20, 30, 0.98) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: var(--text-main);
+    padding: 13px 20px;
+    border-radius: 9px;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.14s ease;
+    text-align: center;
+  }
+
+  .btn:hover:not(:disabled) {
+    border-color: var(--gold);
+    background: linear-gradient(180deg, rgba(55, 42, 34, 0.95) 0%, rgba(30, 22, 20, 0.98) 100%);
+    box-shadow: 0 0 18px rgba(245, 185, 66, 0.25);
+    transform: translateY(-1px);
+  }
+
+  .btn:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  .btn:disabled {
+    opacity: 0.42;
+    cursor: not-allowed;
+  }
+
+  .btn-primary {
+    background: linear-gradient(180deg, #d92648 0%, #8f1129 100%);
+    border-color: rgba(255, 110, 136, 0.55);
+    box-shadow: 0 6px 20px rgba(217, 38, 72, 0.35);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: linear-gradient(180deg, #f23055 0%, #ab1633 100%);
+    border-color: #ffd166;
+    box-shadow: 0 8px 26px rgba(242, 48, 85, 0.55);
+  }
+
+  .btn-gold {
+    background: linear-gradient(180deg, #d99b26 0%, #8c5e0b 100%);
+    border-color: rgba(255, 222, 130, 0.6);
+    color: #fff;
+  }
+
+  .btn-sm {
+    padding: 8px 14px;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+  }
+
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 14px;
+    margin-bottom: 18px;
+  }
+
+  .panel-title {
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #fff;
+  }
+
+  /* Campaign Grid */
+  .campaign-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(205px, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  .stage-card {
+    background: rgba(20, 20, 30, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    padding: 13px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    position: relative;
+  }
+
+  .stage-card:hover:not(.locked) {
+    border-color: var(--gold);
+    transform: translateY(-2px);
+  }
+
+  .stage-card.selected {
+    border-color: var(--crimson);
+    box-shadow: 0 0 0 1px var(--crimson), 0 8px 22px rgba(255, 46, 85, 0.25);
+    background: rgba(38, 16, 26, 0.88);
+  }
+
+  .stage-card.locked {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .stage-num {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--gold);
+    font-weight: 800;
+  }
+
+  .stage-name {
+    font-size: 16px;
+    font-weight: 800;
+    margin: 4px 0 2px;
+  }
+
+  .stage-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .story-card {
+    background: rgba(8, 8, 14, 0.78);
+    border-left: 3px solid var(--crimson);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 16px;
+  }
+
+  .story-quote {
+    font-style: italic;
+    color: #e5e7eb;
+    line-height: 1.5;
+    font-size: 14px;
+    margin-top: 6px;
+  }
+
+  /* Armory Layout */
+  .armory-layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 18px;
+  }
+
+  @media (max-width: 760px) {
+    .armory-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .preview-card {
+    background: radial-gradient(circle at 50% 38%, rgba(45, 35, 55, 0.55), rgba(8, 8, 14, 0.95));
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  #armory-canvas {
+    width: 220px;
+    height: 250px;
+    border-radius: 8px;
+  }
+
+  .stat-list {
+    width: 100%;
+    font-size: 13px;
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    padding-bottom: 4px;
+  }
+
+  .section-label {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin: 10px 0 8px;
+  }
+
+  .item-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+  }
+
+  .item-card {
+    background: rgba(20, 20, 30, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .item-card.equipped {
+    border-color: var(--gold);
+    box-shadow: inset 0 0 16px rgba(245, 185, 66, 0.14);
+  }
+
+  .item-title {
+    font-weight: 800;
+    font-size: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .badge {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 99px;
+    background: rgba(245, 185, 66, 0.2);
+    color: var(--gold);
+    font-weight: 800;
+  }
+
+  .item-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.35;
+  }
+
+  .item-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .swatch-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+
+  .swatch {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    cursor: pointer;
+    transition: transform 0.14s ease, border-color 0.14s ease;
+  }
+
+  .swatch.active {
+    transform: scale(1.18);
+    border-color: #fff;
+    box-shadow: 0 0 14px currentColor;
+  }
+
+  /* Quick Duel & Settings Form Controls */
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  .field-box {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+
+  .field-box label {
+    display: block;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--gold);
+    font-weight: 800;
+    margin-bottom: 8px;
+  }
+
+  select, input[type="range"] {
+    width: 100%;
+    accent-color: var(--crimson);
+  }
+
+  select {
+    background: #12121c;
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 7px;
+    padding: 9px 10px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .controls-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 8px;
+  }
+
+  .controls-table td {
+    padding: 7px 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  kbd {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    border-radius: 5px;
+    padding: 2px 7px;
+    font-family: monospace;
+    font-size: 12px;
+    color: #fff;
+  }
+
+  /* Touch Controls Overlay */
+  #touch-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+    display: none;
+  }
+
+  #touch-layer.visible {
+    display: block;
+  }
+
+  #joystick-zone {
+    position: absolute;
+    left: 22px;
+    bottom: 24px;
+    width: 156px;
+    height: 156px;
+    pointer-events: auto;
+    touch-action: none;
+  }
+
+  .joy-base {
+    position: absolute;
+    inset: 12px;
+    border-radius: 50%;
+    background: rgba(12, 12, 20, 0.42);
+    border: 2px solid rgba(255, 255, 255, 0.22);
+    backdrop-filter: blur(4px);
+  }
+
+  .joy-stick {
+    position: absolute;
+    width: 58px;
+    height: 58px;
+    left: 49px;
+    top: 49px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.65), rgba(200, 200, 220, 0.28));
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    transition: transform 0.03s linear;
+  }
+
+  #action-pad {
+    position: absolute;
+    right: 18px;
+    bottom: 20px;
+    width: 260px;
+    height: 210px;
+    pointer-events: none;
+  }
+
+  .t-btn {
+    position: absolute;
+    pointer-events: auto;
+    touch-action: none;
+    border-radius: 50%;
+    background: rgba(16, 16, 26, 0.56);
+    border: 2px solid rgba(255, 255, 255, 0.28);
+    color: #fff;
+    font-weight: 900;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  }
+
+  .t-btn.pressed {
+    background: rgba(255, 51, 102, 0.65);
+    border-color: #fff;
+    transform: scale(0.92);
+  }
+
+  /* Ergonomic arcade button arc on right side */
+  #t-punch  { width: 62px; height: 62px; right: 140px; bottom: 8px; border-color: rgba(96, 165, 250, 0.6); }
+  #t-kick   { width: 62px; height: 62px; right: 72px;  bottom: 24px; border-color: rgba(52, 211, 153, 0.6); }
+  #t-weapon { width: 68px; height: 68px; right: 2px;   bottom: 58px; border-color: rgba(251, 113, 133, 0.75); font-size: 13px; }
+  #t-heavy  { width: 54px; height: 54px; right: 6px;   bottom: 136px; border-color: rgba(245, 185, 66, 0.75); font-size: 11px; }
+  #t-block  { width: 58px; height: 58px; right: 142px; bottom: 82px; border-color: rgba(226, 232, 240, 0.65); }
+  #t-special{ width: 58px; height: 58px; right: 74px;  bottom: 102px; border-color: rgba(192, 132, 252, 0.8); }
+  #t-throw  { width: 50px; height: 50px; right: 198px; bottom: 48px; border-color: rgba(56, 189, 248, 0.65); font-size: 10px; }
+  #t-roll   { width: 52px; height: 52px; left: 46px;   bottom: 184px; pointer-events: auto; border-color: rgba(250, 204, 21, 0.6); font-size: 11px; }
+
+  @media (max-width: 640px) {
+    .panel { padding: 16px; }
+    #joystick-zone { left: 10px; bottom: 12px; transform: scale(0.88); transform-origin: bottom left; }
+    #t-roll { left: 30px; bottom: 152px; transform: scale(0.88); }
+    #action-pad { right: 10px; bottom: 10px; transform: scale(0.88); transform-origin: bottom right; }
+  }
+</style>
+</head>
+<body>
+<div id="game-root">
+  <canvas id="game-canvas"></canvas>
+
+  <!-- Quick Top-Right Utility Buttons -->
+  <div id="top-controls">
+    <button id="btn-mute" class="icon-btn" title="Toggle Audio">SOUND: ON</button>
+    <button id="btn-pause" class="icon-btn" style="display:none;" title="Pause (Esc / P)">PAUSE ||</button>
+  </div>
+
+  <!-- Mobile / Touch Virtual Controls -->
+  <div id="touch-layer">
+    <div id="joystick-zone">
+      <div class="joy-base"></div>
+      <div id="joy-stick" class="joy-stick"></div>
+    </div>
+    <button id="t-roll" class="t-btn" data-act="roll">ROLL</button>
+    <div id="action-pad">
+      <button id="t-throw" class="t-btn" data-act="throw">KUNAI</button>
+      <button id="t-punch" class="t-btn" data-act="punch">PUNCH</button>
+      <button id="t-block" class="t-btn" data-act="block">BLOCK</button>
+      <button id="t-kick" class="t-btn" data-act="kick">KICK</button>
+      <button id="t-special" class="t-btn" data-act="special">RAGE</button>
+      <button id="t-weapon" class="t-btn" data-act="weapon">SLASH</button>
+      <button id="t-heavy" class="t-btn" data-act="heavy">HEAVY</button>
+    </div>
+  </div>
+
+  <!-- MAIN MENU -->
+  <div id="screen-menu" class="screen active">
+    <div class="panel main-menu-box">
+      <div class="game-title">UMBRA DUEL</div>
+      <div class="game-subtitle">Shadows of the Broken Seal</div>
+      <div class="status-pill-row">
+        <div class="status-pill">Coins: <span id="menu-coins" class="coin-text">0</span></div>
+        <div class="status-pill">Stage: <span id="menu-stage">1 / 8</span></div>
+        <div class="status-pill">Weapon: <span id="menu-weapon">Katana</span></div>
+      </div>
+      <div class="menu-btn-stack">
+        <button class="btn btn-primary" id="nav-campaign">Campaign</button>
+        <button class="btn" id="nav-quick">Quick Duel</button>
+        <button class="btn btn-gold" id="nav-armory">Armory &amp; Upgrades</button>
+        <button class="btn" id="nav-settings">Settings &amp; Controls</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CAMPAIGN SCREEN -->
+  <div id="screen-campaign" class="screen">
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Path of the Eclipse</div>
+          <div style="font-size:12px;color:var(--text-muted);">Defeat the 8 Shadow Wardens to seal the Obsidian Gate</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span class="status-pill">Coins: <span id="camp-coins" class="coin-text">0</span></span>
+          <button class="btn btn-sm" data-back="menu">Back</button>
+        </div>
+      </div>
+
+      <div id="campaign-grid" class="campaign-grid"></div>
+
+      <div id="campaign-story" class="story-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+          <strong id="story-title" style="font-size:16px;color:var(--gold);">Act I</strong>
+          <span id="story-arena" style="font-size:12px;color:var(--text-muted);">Arena: Dusk Temple</span>
+        </div>
+        <p id="story-text" class="story-quote"></p>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-gold" id="camp-armory-btn">Visit Armory</button>
+        <button class="btn btn-primary" id="camp-fight-btn">Enter Duel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUICK DUEL SCREEN -->
+  <div id="screen-quick" class="screen">
+    <div class="panel" style="width:min(680px,95vw);">
+      <div class="panel-header">
+        <div class="panel-title">Quick Duel</div>
+        <button class="btn btn-sm" data-back="menu">Back</button>
+      </div>
+      <div class="form-grid">
+        <div class="field-box">
+          <label for="qd-arena">Arena</label>
+          <select id="qd-arena">
+            <option value="temple">Dusk Temple</option>
+            <option value="bamboo">Bamboo Forest</option>
+            <option value="ruins">Misty Ruins</option>
+            <option value="harbour">Night Harbour</option>
+          </select>
+        </div>
+        <div class="field-box">
+          <label for="qd-diff">AI Difficulty</label>
+          <select id="qd-diff">
+            <option value="0">Initiate (Relaxed)</option>
+            <option value="1" selected>Warrior (Balanced)</option>
+            <option value="2">Master (Aggressive)</option>
+            <option value="3">Eclipse Sovereign (Boss)</option>
+          </select>
+        </div>
+        <div class="field-box">
+          <label for="qd-weapon">Opponent Weapon</label>
+          <select id="qd-weapon">
+            <option value="random">Random Weapon</option>
+            <option value="sword">Nightfall Katana</option>
+            <option value="daggers">Twin Viper Fangs</option>
+            <option value="staff">Whispering Iron Staff</option>
+            <option value="axe">Titan Executioner Axe</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:12px;">
+        <button class="btn btn-primary" id="qd-start-btn">Start Duel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARMORY SCREEN -->
+  <div id="screen-armory" class="screen">
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Shadow Armory</div>
+          <div style="font-size:12px;color:var(--text-muted);">Forge weapons, temper armor, and attune your spirit glow</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span class="status-pill">Coins: <span id="armory-coins" class="coin-text">0</span></span>
+          <button class="btn btn-sm" data-back="menu">Back</button>
+        </div>
+      </div>
+
+      <div class="armory-layout">
+        <div class="preview-card">
+          <canvas id="armory-canvas" width="220" height="250"></canvas>
+          <div class="stat-list" id="armory-stats"></div>
+          <div class="section-label" style="align-self:flex-start;margin-top:14px;">Spirit Accent</div>
+          <div id="accent-swatches" class="swatch-row" style="align-self:flex-start;"></div>
+        </div>
+
+        <div>
+          <div class="section-label" style="margin-top:0;">Weapons (2 Unique Rage Specials Each)</div>
+          <div id="weapon-grid" class="item-grid"></div>
+
+          <div class="section-label" style="margin-top:18px;">Shadow Armor &amp; Helms</div>
+          <div id="armor-grid" class="item-grid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS & CONTROLS SCREEN -->
+  <div id="screen-settings" class="screen">
+    <div class="panel" style="width:min(760px,95vw);">
+      <div class="panel-header">
+        <div class="panel-title">Settings &amp; Martial Scroll</div>
+        <button class="btn btn-sm" id="settings-back-btn">Done</button>
+      </div>
+
+      <div class="form-grid">
+        <div class="field-box">
+          <label for="set-sound">Sound &amp; Ambient Drone</label>
+          <select id="set-sound">
+            <option value="on">Enabled</option>
+            <option value="off">Muted</option>
+          </select>
+        </div>
+        <div class="field-box">
+          <label for="set-volume">Master Volume (<span id="vol-label">70%</span>)</label>
+          <input type="range" id="set-volume" min="0" max="100" value="70">
+        </div>
+        <div class="field-box">
+          <label for="set-touch">On-Screen Touch Pad</label>
+          <select id="set-touch">
+            <option value="auto">Auto-Detect Device</option>
+            <option value="on">Always Show</option>
+            <option value="off">Hidden</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-label">Combat Controls &amp; Techniques</div>
+      <table class="controls-table">
+        <tr><td><strong>Move / Jump / Crouch</strong></td><td><kbd>A</kbd> / <kbd>D</kbd> Move, <kbd>W</kbd> Jump, <kbd>S</kbd> Crouch (ducks high strikes &amp; kunai)</td></tr>
+        <tr><td><strong>Dodge-Roll (Invincible)</strong></td><td>Double-tap <kbd>A</kbd> or <kbd>D</kbd> (or <kbd>Shift</kbd>) to roll through attacks</td></tr>
+        <tr><td><strong>Martial Combos</strong></td><td><kbd>J</kbd><kbd>J</kbd><kbd>J</kbd> 3-Hit Punch &bull; <kbd>K</kbd><kbd>K</kbd><kbd>K</kbd> 3-Hit Kick &bull; <kbd>S</kbd>+<kbd>K</kbd> Low Sweep (Knockdown!)</td></tr>
+        <tr><td><strong>Weapon Attacks</strong></td><td><kbd>L</kbd><kbd>L</kbd><kbd>L</kbd> 3-Hit Light Slash &bull; <kbd>Back</kbd>+<kbd>L</kbd> or Hold <kbd>L</kbd> or <kbd>H</kbd> Heavy Cleave</td></tr>
+        <tr><td><strong>Air &amp; Crouch Strikes</strong></td><td>Jump + <kbd>J</kbd>/<kbd>K</kbd>/<kbd>L</kbd> Aerial Attacks &bull; <kbd>S</kbd> + <kbd>J</kbd>/<kbd>L</kbd> Low Attacks</td></tr>
+        <tr><td><strong>Ranged Spirit Kunai</strong></td><td><kbd>O</kbd> or <kbd>J</kbd>+<kbd>K</kbd> (or <kbd>Back</kbd>+<kbd>J</kbd>) Throw Kunai (recharges up to 2 charges)</td></tr>
+        <tr><td><strong>Block &amp; Perfect Parry</strong></td><td>Hold <kbd>I</kbd> to Block &bull; Tap <kbd>I</kbd> right before impact to <strong>Perfect Parry</strong> &amp; stun!</td></tr>
+        <tr><td><strong>2 Weapon Rage Specials</strong></td><td>At 50%+ Rage: <kbd>U</kbd> Special Art I &bull; <kbd>S</kbd>+<kbd>U</kbd> (or <kbd>Back</kbd>+<kbd>U</kbd>) Special Art II</td></tr>
+      </table>
+
+      <div style="margin-top:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <button class="btn btn-sm" id="btn-reset-save" style="border-color:rgba(255,46,85,0.45);color:#fca5a5;">Reset Save Progress</button>
+        <span style="font-size:12px;color:var(--text-muted);">Progress auto-saves locally after every match &amp; upgrade.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAUSE OVERLAY -->
+  <div id="screen-pause" class="screen">
+    <div class="panel main-menu-box" style="width:min(400px,92vw);">
+      <div class="panel-title" style="margin-bottom:16px;">Duel Paused</div>
+      <div class="menu-btn-stack">
+        <button class="btn btn-primary" id="pause-resume">Resume Fight</button>
+        <button class="btn" id="pause-restart">Restart Match</button>
+        <button class="btn" id="pause-settings">Controls &amp; Audio</button>
+        <button class="btn" id="pause-quit">Quit to Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POST-MATCH RESULT OVERLAY -->
+  <div id="screen-result" class="screen">
+    <div class="panel main-menu-box" style="width:min(480px,94vw);">
+      <div id="res-banner" class="game-title" style="font-size:40px;">VICTORY</div>
+      <div id="res-subtitle" style="color:var(--text-muted);font-size:14px;margin:6px 0 16px;">Opponent Defeated</div>
+      <div class="stat-list" id="res-stats" style="margin-bottom:18px;text-align:left;"></div>
+      <div class="menu-btn-stack">
+        <button class="btn btn-primary" id="res-next">Next Opponent</button>
+        <button class="btn" id="res-rematch">Rematch</button>
+        <button class="btn btn-gold" id="res-armory">Armory</button>
+        <button class="btn" id="res-menu">Main Menu</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+if (typeof CanvasRenderingContext2D !== "undefined" && !CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+    const rad = Math.min(typeof r === "number" ? r : 0, Math.abs(w) * 0.5, Math.abs(h) * 0.5);
+    this.moveTo(x + rad, y);
+    this.arcTo(x + w, y, x + w, y + h, rad);
+    this.arcTo(x + w, y + h, x, y + h, rad);
+    this.arcTo(x, y + h, x, y, rad);
+    this.arcTo(x, y, x + w, y, rad);
+    this.closePath();
+    return this;
+  };
+}
+
+/* ============================================================================
+   1. CONFIG — ALL BALANCE NUMBERS, WEAPONS, ARMOR, ARENAS & CAMPAIGN DATA
+   ============================================================================ */
+const CONFIG = {
+  // Core Simulation & Stage
+  FPS: 60,
+  DT: 1 / 60,
+  STAGE_W: 1280,
+  STAGE_H: 720,
+  GROUND_Y: 595,
+  ARENA_LEFT: 95,
+  ARENA_RIGHT: 1185,
+
+  // Movement & Physics
+  GRAVITY: 2250,
+  JUMP_VELOCITY: -870,
+  WALK_SPEED_FWD: 285,
+  WALK_SPEED_BACK: 215,
+  AIR_DRIFT_ACCEL: 950,
+  FRICTION_GROUND: 0.78,
+  PUSHBOX_RADIUS: 34,
+
+  // Dodge-Roll & Double-Tap Dash
+  DOUBLE_TAP_MS: 270,
+  DODGE_SPEED: 560,
+  DODGE_FRAMES: 22,
+  DODGE_INVULN_FRAMES: 15,
+  DODGE_COOLDOWN_FRAMES: 24,
+
+  // Health, Rage, Block, Parry & Ranged
+  PLAYER_BASE_HP: 110,
+  DAMAGE_MULTIPLIER: 1.0,       // Global pace scalar (increase for faster KOs)
+  RAGE_MAX: 100,
+  SPECIAL_RAGE_COST: 50,
+  RAGE_GAIN_DEAL_MULT: 0.90,
+  RAGE_GAIN_TAKE_MULT: 1.25,
+  RAGE_GAIN_PARRY: 24,
+  BLOCK_DAMAGE_MULT: 0.20,      // Blocking takes 20% chip on heavy/weapon strikes
+  LIGHT_BLOCK_MULT: 0.07,       // Blocking takes 7% chip on punches/kicks
+  PARRY_WINDOW_FRAMES: 9,       // ~150ms timing window for Perfect Parry
+  PARRY_STUN_FRAMES: 42,        // Stun applied to attacker on Perfect Parry
+  WAKEUP_INVULN_FRAMES: 20,
+
+  // Ranged Spirit Kunai
+  RANGED_MAX_AMMO: 2,
+  RANGED_RECHARGE_SEC: 4.2,
+  RANGED_SPEED: 810,
+  RANGED_DAMAGE: 10,
+
+  // Match Rules & Cinematic Juice
+  ROUND_TIME_SEC: 60,
+  ROUNDS_TO_WIN: 2,
+  INPUT_BUFFER_FRAMES: 11,
+  HEAVY_HOLD_FRAMES: 12,
+  HITSTOP_LIGHT: 3,
+  HITSTOP_HEAVY: 6,
+  KO_SLOWMO_SCALE: 0.22,
+  KO_SLOWMO_DURATION: 1.15,
+
+  // Economy & Upgrade Scaling
+  WEAPON_UPGRADE_DMG_STEP: 0.09,
+  ARMOR_UPGRADE_HP_STEP: 0.06,
+  ARMOR_UPGRADE_DEF_STEP: 0.025,
+  MAX_UPGRADE_LEVEL: 5,
+  CAMPAIGN_BASE_REWARD: 75,
+  CAMPAIGN_REWARD_PER_STAGE: 30,
+  CONSOLATION_REWARD: 20,
+  QUICK_DUEL_REWARD: 55,
+
+  // Global AI Difficulty Scalar (0.7 = easier, 1.0 = normal, 1.35 = brutal)
+  AI_DIFFICULTY_SCALE: 1.0
+};
+
+const ACCENTS = [
+  { id: "crimson", name: "Crimson Ember", hex: "#ff3366", glow: "rgba(255, 51, 102, 0.7)" },
+  { id: "cyan",    name: "Spirit Cyan",   hex: "#00e5ff", glow: "rgba(0, 229, 255, 0.7)" },
+  { id: "jade",    name: "Jade Flame",    hex: "#10b981", glow: "rgba(16, 185, 129, 0.7)" },
+  { id: "violet",  name: "Void Violet",   hex: "#c084fc", glow: "rgba(192, 132, 252, 0.7)" },
+  { id: "gold",    name: "Solar Gold",    hex: "#fbbf24", glow: "rgba(251, 191, 36, 0.7)" },
+  { id: "frost",   name: "Ghost Silver",  hex: "#f1f5f9", glow: "rgba(241, 245, 249, 0.7)" }
+];
+
+const WEAPONS = {
+  sword: {
+    id: "sword",
+    name: "Nightfall Katana",
+    cost: 0,
+    upgradeBaseCost: 85,
+    reach: 96,
+    speedMult: 1.0,
+    dmgMult: 1.0,
+    weight: 0.55,
+    desc: "Balanced curved katana. Crisp reach, fluid 3-slash chains. Specials: Crescent Gale & Umbra Wave.",
+    spec1Name: "Crescent Gale",
+    spec2Name: "Umbra Wave"
+  },
+  daggers: {
+    id: "daggers",
+    name: "Twin Viper Fangs",
+    cost: 150,
+    upgradeBaseCost: 95,
+    reach: 62,
+    speedMult: 1.26,
+    dmgMult: 0.84,
+    weight: 0.28,
+    dual: true,
+    desc: "Lightning-fast dual daggers held in both hands. Relentless close combos. Specials: Phantom Flurry & Viper Blink.",
+    spec1Name: "Phantom Flurry",
+    spec2Name: "Viper Blink"
+  },
+  staff: {
+    id: "staff",
+    name: "Whispering Iron Staff",
+    cost: 220,
+    upgradeBaseCost: 105,
+    reach: 128,
+    speedMult: 0.88,
+    dmgMult: 1.04,
+    weight: 0.72,
+    desc: "Long iron-shod polearm that controls space from afar. Specials: Tempest Wheel & Sky Vault Slam.",
+    spec1Name: "Tempest Wheel",
+    spec2Name: "Sky Vault Slam"
+  },
+  axe: {
+    id: "axe",
+    name: "Titan Executioner Axe",
+    cost: 300,
+    upgradeBaseCost: 120,
+    reach: 102,
+    speedMult: 0.74,
+    dmgMult: 1.34,
+    weight: 1.0,
+    desc: "Slow, devastating bearded battle-axe with bone-shaking knockback. Specials: Earthshaker & Berserker Whirl.",
+    spec1Name: "Earthshaker",
+    spec2Name: "Berserker Whirl"
+  }
+};
+
+const ARMORS = {
+  wraps: {
+    id: "wraps",
+    name: "Initiate Shadow Wraps",
+    cost: 0,
+    upgradeBaseCost: 75,
+    hpBonus: 0.0,
+    defBonus: 0.0,
+    hat: "headband",
+    cape: false,
+    shoulders: 0,
+    desc: "Light martial cloth wraps and flowing shinobi headband."
+  },
+  ronin: {
+    id: "ronin",
+    name: "Wandering Ronin Garb",
+    cost: 140,
+    upgradeBaseCost: 95,
+    hpBonus: 0.14,
+    defBonus: 0.06,
+    hat: "kasa",
+    cape: false,
+    shoulders: 1,
+    desc: "Woven straw kasa hat and reinforced brigandine shoulder guards. +14% HP, +6% Defense."
+  },
+  gusoku: {
+    id: "gusoku",
+    name: "Night Demon Gusoku",
+    cost: 270,
+    upgradeBaseCost: 115,
+    hpBonus: 0.28,
+    defBonus: 0.12,
+    hat: "kabuto",
+    cape: false,
+    shoulders: 2,
+    desc: "Lacquered samurai do-maru plates and crescent kabuto helm. +28% HP, +12% Defense."
+  },
+  sovereign: {
+    id: "sovereign",
+    name: "Eclipse Sovereign Plate",
+    cost: 430,
+    upgradeBaseCost: 140,
+    hpBonus: 0.44,
+    defBonus: 0.18,
+    hat: "horns",
+    cape: true,
+    shoulders: 2,
+    desc: "Regal horned shadow armor with a living mantle of darkness. +44% HP, +18% Defense."
+  }
+};
+
+const ARENAS = {
+  temple:  { id: "temple",  name: "Dusk Temple" },
+  bamboo:  { id: "bamboo",  name: "Bamboo Forest" },
+  ruins:   { id: "ruins",   name: "Misty Ruins" },
+  harbour: { id: "harbour", name: "Night Harbour" }
+};
+
+const CAMPAIGN_FIGHTERS = [
+  {
+    stage: 1,
+    name: "Kenji the Stray",
+    title: "Outcast Scout",
+    arena: "temple",
+    weapon: "daggers",
+    armor: "wraps",
+    accent: "#38bdf8",
+    hpMult: 0.92,
+    dmgMult: 0.86,
+    ai: { aggression: 0.36, reaction: 24, blockChance: 0.20, parryChance: 0.02, comboChance: 0.35, specialChance: 0.25 },
+    story: "At the steps of the Dusk Temple, a disgraced scout bars your path. 'Your shadow reeks of the Obsidian Gate, wanderer. Hand over your blade!'"
+  },
+  {
+    stage: 2,
+    name: "Brother Ren",
+    title: "Blindfolded Ascetic",
+    arena: "bamboo",
+    weapon: "staff",
+    armor: "wraps",
+    accent: "#34d399",
+    hpMult: 1.0,
+    dmgMult: 0.92,
+    ai: { aggression: 0.44, reaction: 20, blockChance: 0.30, parryChance: 0.05, comboChance: 0.45, specialChance: 0.35 },
+    story: "Deep within the Whispering Bamboo Grove, Brother Ren listens solely to the wind. 'Sight is illusion. Only the reach of iron truth remains.'"
+  },
+  {
+    stage: 3,
+    name: "Vespera",
+    title: "Silent Fang of the Ruins",
+    arena: "ruins",
+    weapon: "daggers",
+    armor: "ronin",
+    accent: "#c084fc",
+    hpMult: 1.06,
+    dmgMult: 0.98,
+    ai: { aggression: 0.58, reaction: 16, blockChance: 0.34, parryChance: 0.08, comboChance: 0.62, specialChance: 0.48 },
+    story: "Among sunken monoliths, Vespera steps from a veil of violet mist. 'Lord Malakor paid thrice your weight in gold for your spirit core.'"
+  },
+  {
+    stage: 4,
+    name: "Iron Goro",
+    title: "Black Tide Warlord",
+    arena: "harbour",
+    weapon: "axe",
+    armor: "ronin",
+    accent: "#f59e0b",
+    hpMult: 1.16,
+    dmgMult: 1.04,
+    ai: { aggression: 0.52, reaction: 15, blockChance: 0.38, parryChance: 0.09, comboChance: 0.55, specialChance: 0.52 },
+    story: "Lanterns sway over the Night Harbour as Iron Goro drags his great axe across wet timber. 'No soul sails past these docks unbroken!'"
+  },
+  {
+    stage: 5,
+    name: "Master Takeshi",
+    title: "Crimson Dojo Grandmaster",
+    arena: "temple",
+    weapon: "sword",
+    armor: "gusoku",
+    accent: "#fb7185",
+    hpMult: 1.22,
+    dmgMult: 1.08,
+    ai: { aggression: 0.62, reaction: 12, blockChance: 0.50, parryChance: 0.15, comboChance: 0.70, specialChance: 0.60 },
+    story: "Your former sworn brother awaits beneath the torii arch, katana gleaming red. 'You unleashed the Eclipse! If redemption is what you seek, prove it in steel!'"
+  },
+  {
+    stage: 6,
+    name: "Lady Suiren",
+    title: "Warden of Emerald Mist",
+    arena: "bamboo",
+    weapon: "staff",
+    armor: "gusoku",
+    accent: "#facc15",
+    hpMult: 1.28,
+    dmgMult: 1.14,
+    ai: { aggression: 0.68, reaction: 10, blockChance: 0.55, parryChance: 0.18, comboChance: 0.75, specialChance: 0.68 },
+    story: "Fireflies scatter as Lady Suiren spins her gilded polearm. 'Five Wardens have fallen, yet your form flickers still. Let us test your resolve!'"
+  },
+  {
+    stage: 7,
+    name: "Kurogane",
+    title: "Sanctum Executioner",
+    arena: "ruins",
+    weapon: "axe",
+    armor: "sovereign",
+    accent: "#f97316",
+    hpMult: 1.36,
+    dmgMult: 1.20,
+    ai: { aggression: 0.72, reaction: 9, blockChance: 0.60, parryChance: 0.20, comboChance: 0.80, specialChance: 0.75 },
+    story: "Before the Obsidian Pier stands Kurogane, clad in horned iron. 'Beyond me waits the Sovereign himself. Kneel, and your end shall be swift.'"
+  },
+  {
+    stage: 8,
+    name: "Lord Malakor",
+    title: "Sovereign of the Eclipse",
+    arena: "harbour",
+    eclipse: true,
+    isBoss: true,
+    weapon: "sword",
+    armor: "sovereign",
+    accent: "#ff1e56",
+    hpMult: 1.55,
+    dmgMult: 1.26,
+    ai: { aggression: 0.80, reaction: 7, blockChance: 0.66, parryChance: 0.25, comboChance: 0.86, specialChance: 0.85 },
+    story: "A blood eclipse devours the moon above the Night Harbour. Lord Malakor draws his cursed odachi: 'You opened the Gate for me, shadow! Now become part of my eternal night!'"
+  }
+];
+
+/* ============================================================================
+   2. SAVE SYSTEM — LOCALSTORAGE WITH SAFE IN-MEMORY FALLBACK
+   ============================================================================ */
+const SAVE_KEY = "umbra_duel_save_v1";
+let memoryFallbackStore = null;
+
+function createDefaultSave() {
+  return {
+    coins: 60,
+    unlockedWeapons: { sword: true },
+    weaponLevels: { sword: 1, daggers: 1, staff: 1, axe: 1 },
+    equippedWeapon: "sword",
+    unlockedArmors: { wraps: true },
+    armorLevels: { wraps: 1, ronin: 1, gusoku: 1, sovereign: 1 },
+    equippedArmor: "wraps",
+    accentId: "crimson",
+    highestStage: 1,     // 1..8 unlocked; 9 = campaign cleared
+    selectedStage: 1,
+    settings: {
+      sound: true,
+      volume: 0.70,
+      touchMode: "auto"
+    }
+  };
+}
+
+let SaveData = loadSaveData();
+
+function loadSaveData() {
+  const def = createDefaultSave();
+  try {
+    const raw = window.localStorage ? window.localStorage.getItem(SAVE_KEY) : memoryFallbackStore;
+    if (!raw) return def;
+    const parsed = JSON.parse(raw);
+    return {
+      ...def,
+      ...parsed,
+      unlockedWeapons: { ...def.unlockedWeapons, ...(parsed.unlockedWeapons || {}) },
+      weaponLevels: { ...def.weaponLevels, ...(parsed.weaponLevels || {}) },
+      unlockedArmors: { ...def.unlockedArmors, ...(parsed.unlockedArmors || {}) },
+      armorLevels: { ...def.armorLevels, ...(parsed.armorLevels || {}) },
+      settings: { ...def.settings, ...(parsed.settings || {}) }
+    };
+  } catch (e) {
+    return def;
+  }
+}
+
+function saveProgress() {
+  const serialized = JSON.stringify(SaveData);
+  memoryFallbackStore = serialized;
+  try {
+    if (window.localStorage) {
+      window.localStorage.setItem(SAVE_KEY, serialized);
+    }
+  } catch (e) {
+    // Fallback remains safely in memoryFallbackStore
+  }
+}
+
+/* ============================================================================
+   3. INPUT SYSTEM — KEYBOARD, MULTI-TOUCH JOYSTICK & ACTION PAD, BUFFERING
+   ============================================================================ */
+const Input = {
+  keys: {},
+  justPressed: {},
+  justReleased: {},
+  touchActions: {},
+  touchJustPressed: {},
+  joyX: 0,
+  joyY: 0,
+  joyActive: false,
+  joyTouchId: null,
+  isTouchDevice: false,
+  lastTapTime: { left: -9999, right: -9999 },
+  dashQueued: 0, // -1 left, +1 right
+  weaponHoldFrames: 0,
+  weaponHeavyFired: false,
+
+  init() {
+    this.isTouchDevice = ("ontouchstart" in window) || (navigator.maxTouchPoints > 0);
+
+    window.addEventListener("keydown", (e) => {
+      AudioEngine.unlock();
+      const code = e.code;
+      if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(code)) {
+        e.preventDefault();
+      }
+      if (!this.keys[code]) {
+        this.justPressed[code] = true;
+        const now = performance.now();
+        if (code === "KeyA" || code === "ArrowLeft") {
+          if (now - this.lastTapTime.left <= CONFIG.DOUBLE_TAP_MS) {
+            this.dashQueued = -1;
+            this.lastTapTime.left = -9999;
+          } else {
+            this.lastTapTime.left = now;
+          }
+        } else if (code === "KeyD" || code === "ArrowRight") {
+          if (now - this.lastTapTime.right <= CONFIG.DOUBLE_TAP_MS) {
+            this.dashQueued = 1;
+            this.lastTapTime.right = -9999;
+          } else {
+            this.lastTapTime.right = now;
+          }
+        }
+        if (code === "Escape" || code === "KeyP") {
+          Game.togglePause();
+        }
+      }
+      this.keys[code] = true;
+    }, { passive: false });
+
+    window.addEventListener("keyup", (e) => {
+      this.keys[e.code] = false;
+      this.justReleased[e.code] = true;
+    });
+
+    window.addEventListener("blur", () => {
+      this.keys = {};
+      this.touchActions = {};
+      this.joyX = 0;
+      this.joyY = 0;
+    });
+
+    this.initTouchControls();
+  },
+
+  initTouchControls() {
+    const joyZone = document.getElementById("joystick-zone");
+    const joyStick = document.getElementById("joy-stick");
+    const maxRadius = 46;
+
+    const updateStick = (clientX, clientY) => {
+      const rect = joyZone.getBoundingClientRect();
+      const cx = rect.left + rect.width * 0.5;
+      const cy = rect.top + rect.height * 0.5;
+      let dx = clientX - cx;
+      let dy = clientY - cy;
+      const dist = Math.hypot(dx, dy);
+      if (dist > maxRadius) {
+        dx = (dx / dist) * maxRadius;
+        dy = (dy / dist) * maxRadius;
+      }
+      joyStick.style.transform = `translate(${dx}px, ${dy}px)`;
+      const prevY = this.joyY;
+      this.joyX = Math.abs(dx / maxRadius) > 0.22 ? (dx / maxRadius) : 0;
+      this.joyY = Math.abs(dy / maxRadius) > 0.25 ? (dy / maxRadius) : 0;
+      if (this.joyY < -0.52 && prevY >= -0.52) {
+        this.touchJustPressed.jump = true;
+      }
+    };
+
+    const resetStick = () => {
+      this.joyActive = false;
+      this.joyTouchId = null;
+      this.joyX = 0;
+      this.joyY = 0;
+      joyStick.style.transform = "translate(0px, 0px)";
+    };
+
+    joyZone.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      AudioEngine.unlock();
+      this.joyActive = true;
+      this.joyTouchId = e.pointerId;
+      joyZone.setPointerCapture(e.pointerId);
+      updateStick(e.clientX, e.clientY);
+    });
+
+    joyZone.addEventListener("pointermove", (e) => {
+      if (this.joyActive && e.pointerId === this.joyTouchId) {
+        updateStick(e.clientX, e.clientY);
+      }
+    });
+
+    joyZone.addEventListener("pointerup", (e) => {
+      if (e.pointerId === this.joyTouchId) resetStick();
+    });
+    joyZone.addEventListener("pointercancel", (e) => {
+      if (e.pointerId === this.joyTouchId) resetStick();
+    });
+
+    document.querySelectorAll(".t-btn").forEach((btn) => {
+      const act = btn.dataset.act;
+      const press = (e) => {
+        e.preventDefault();
+        AudioEngine.unlock();
+        if (!this.touchActions[act]) {
+          this.touchJustPressed[act] = true;
+        }
+        this.touchActions[act] = true;
+        btn.classList.add("pressed");
+      };
+      const release = (e) => {
+        e.preventDefault();
+        this.touchActions[act] = false;
+        btn.classList.remove("pressed");
+      };
+      btn.addEventListener("pointerdown", press);
+      btn.addEventListener("pointerup", release);
+      btn.addEventListener("pointercancel", release);
+      btn.addEventListener("pointerleave", release);
+    });
+  },
+
+  leftHeld() {
+    return !!(this.keys.KeyA || this.keys.ArrowLeft || this.joyX < -0.28);
+  },
+  rightHeld() {
+    return !!(this.keys.KeyD || this.keys.ArrowRight || this.joyX > 0.28);
+  },
+  downHeld() {
+    return !!(this.keys.KeyS || this.keys.ArrowDown || this.joyY > 0.46);
+  },
+  upPressed() {
+    return !!(this.justPressed.KeyW || this.justPressed.ArrowUp || this.justPressed.Space || this.touchJustPressed.jump);
+  },
+  blockHeld() {
+    return !!(this.keys.KeyI || this.touchActions.block);
+  },
+  blockPressed() {
+    return !!(this.justPressed.KeyI || this.touchJustPressed.block);
+  },
+  punchPressed() {
+    return !!(this.justPressed.KeyJ || this.touchJustPressed.punch);
+  },
+  kickPressed() {
+    return !!(this.justPressed.KeyK || this.touchJustPressed.kick);
+  },
+  weaponPressed() {
+    return !!(this.justPressed.KeyL || this.touchJustPressed.weapon);
+  },
+  weaponHeld() {
+    return !!(this.keys.KeyL || this.touchActions.weapon);
+  },
+  heavyPressed() {
+    return !!(this.justPressed.KeyH || this.touchJustPressed.heavy);
+  },
+  throwPressed() {
+    const chord = (this.justPressed.KeyJ && this.keys.KeyK) || (this.justPressed.KeyK && this.keys.KeyJ);
+    return !!(this.justPressed.KeyO || this.touchJustPressed.throw || chord);
+  },
+  specialPressed() {
+    return !!(this.justPressed.KeyU || this.touchJustPressed.special);
+  },
+  rollPressed() {
+    return !!(this.justPressed.ShiftLeft || this.justPressed.ShiftRight || this.touchJustPressed.roll);
+  },
+
+  endFrame() {
+    this.justPressed = {};
+    this.justReleased = {};
+    this.touchJustPressed = {};
+    this.dashQueued = 0;
+  }
+};
+
+/* ============================================================================
+   4. AUDIO ENGINE — PROCEDURAL WEB AUDIO SYNTHESIZER & AMBIENT DRONE
+   ============================================================================ */
+const AudioEngine = {
+  ctx: null,
+  masterGain: null,
+  noiseBuffer: null,
+  droneNodes: null,
+  unlocked: false,
+
+  unlock() {
+    if (this.unlocked && this.ctx) {
+      if (this.ctx.state === "suspended") {
+        this.ctx.resume().catch(() => {});
+      }
+      return;
+    }
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      this.ctx = new AC();
+      this.masterGain = this.ctx.createGain();
+      this.masterGain.connect(this.ctx.destination);
+
+      // Generate 1.5s white/pink blend noise buffer for whooshes, hits & clashes
+      const len = Math.floor(this.ctx.sampleRate * 1.5);
+      this.noiseBuffer = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+      const data = this.noiseBuffer.getChannelData(0);
+      let b0 = 0, b1 = 0, b2 = 0;
+      for (let i = 0; i < len; i++) {
+        const w = Math.random() * 2 - 1;
+        b0 = 0.997 * b0 + w * 0.029;
+        b1 = 0.985 * b1 + w * 0.032;
+        b2 = 0.950 * b2 + w * 0.048;
+        data[i] = (b0 + b1 + b2 + w * 0.35) * 0.7;
+      }
+
+      this.unlocked = true;
+      this.syncVolume();
+      this.startDrone();
+    } catch (e) {
+      this.unlocked = false;
+    }
+  },
+
+  syncVolume() {
+    if (!this.ctx || !this.masterGain) return;
+    const target = SaveData.settings.sound ? SaveData.settings.volume : 0;
+    this.masterGain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.04);
+    const btn = document.getElementById("btn-mute");
+    if (btn) btn.textContent = SaveData.settings.sound ? "SOUND: ON" : "SOUND: OFF";
+  },
+
+  startDrone() {
+    if (!this.ctx || this.droneNodes) return;
+    try {
+      const t = this.ctx.currentTime;
+      const droneGain = this.ctx.createGain();
+      droneGain.gain.setValueAtTime(0.08, t);
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(240, t);
+
+      // Subtle breathing LFO on filter cutoff
+      const lfo = this.ctx.createOscillator();
+      const lfoGain = this.ctx.createGain();
+      lfo.frequency.setValueAtTime(0.14, t);
+      lfoGain.gain.setValueAtTime(85, t);
+      lfo.connect(lfoGain);
+      lfoGain.connect(filter.frequency);
+
+      // Root D2 (73.42 Hz) + Fifth A2 (110 Hz) Eastern temple drone
+      const osc1 = this.ctx.createOscillator();
+      osc1.type = "sawtooth";
+      osc1.frequency.setValueAtTime(73.42, t);
+
+      const osc2 = this.ctx.createOscillator();
+      osc2.type = "triangle";
+      osc2.frequency.setValueAtTime(110.0, t);
+
+      osc1.connect(filter);
+      osc2.connect(filter);
+      filter.connect(droneGain);
+      droneGain.connect(this.masterGain);
+
+      osc1.start(t);
+      osc2.start(t);
+      lfo.start(t);
+      this.droneNodes = { osc1, osc2, lfo, droneGain };
+    } catch (e) {}
+  },
+
+  playWhoosh(weight = 0.5) {
+    if (!this.ctx || !SaveData.settings.sound) return;
+    const t = this.ctx.currentTime;
+    const dur = 0.11 + weight * 0.11;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.Q.setValueAtTime(2.2, t);
+    const startFreq = 950 - weight * 450;
+    const endFreq = 260 - weight * 110;
+    filter.frequency.setValueAtTime(startFreq, t);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(80, endFreq), t + dur);
+
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.001, t);
+    g.gain.linearRampToValueAtTime(0.24 + weight * 0.12, t + dur * 0.25);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+    src.connect(filter);
+    filter.connect(g);
+    g.connect(this.masterGain);
+    src.start(t);
+    src.stop(t + dur + 0.02);
+  },
+
+  playHit(heavy = false, blade = false) {
+    if (!this.ctx || !SaveData.settings.sound) return;
+    const t = this.ctx.currentTime;
+
+    // Sub-bass body thump
+    const osc = this.ctx.createOscillator();
+    const og = this.ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(heavy ? 155 : 125, t);
+    osc.frequency.exponentialRampToValueAtTime(34, t + (heavy ? 0.20 : 0.12));
+    og.gain.setValueAtTime(heavy ? 0.55 : 0.36, t);
+    og.gain.exponentialRampToValueAtTime(0.001, t + (heavy ? 0.22 : 0.13));
+    osc.connect(og);
+    og.connect(this.masterGain);
+    osc.start(t);
+    osc.stop(t + 0.24);
+
+    // Crisp transient snap
+    const ns = this.ctx.createBufferSource();
+    ns.buffer = this.noiseBuffer;
+    const nf = this.ctx.createBiquadFilter();
+    nf.type = blade ? "highpass" : "bandpass";
+    nf.frequency.setValueAtTime(blade ? 1600 : 850, t);
+    const ng = this.ctx.createGain();
+    ng.gain.setValueAtTime(heavy ? 0.42 : 0.26, t);
+    ng.gain.exponentialRampToValueAtTime(0.001, t + (heavy ? 0.14 : 0.08));
+    ns.connect(nf);
+    nf.connect(ng);
+    ng.connect(this.masterGain);
+    ns.start(t);
+    ns.stop(t + 0.16);
+
+    // Blade harmonic slice ring
+    if (blade) {
+      const m = this.ctx.createOscillator();
+      const mg = this.ctx.createGain();
+      m.type = "triangle";
+      m.frequency.setValueAtTime(heavy ? 720 : 1080, t);
+      m.frequency.exponentialRampToValueAtTime(360, t + 0.11);
+      mg.gain.setValueAtTime(0.18, t);
+      mg.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+      m.connect(mg);
+      mg.connect(this.masterGain);
+      m.start(t);
+      m.stop(t + 0.13);
+    }
+  },
+
+  playBlock(parry = false) {
+    if (!this.ctx || !SaveData.settings.sound) return;
+    const t = this.ctx.currentTime;
+    const freqs = parry ? [980, 1480, 2240, 2960] : [640, 1020, 1680];
+    const dur = parry ? 0.42 : 0.16;
+
+    freqs.forEach((f, idx) => {
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = idx % 2 === 0 ? "triangle" : "sine";
+      osc.frequency.setValueAtTime(f, t);
+      osc.frequency.exponentialRampToValueAtTime(f * (parry ? 1.04 : 0.88), t + dur);
+      g.gain.setValueAtTime((parry ? 0.18 : 0.13) / (idx * 0.5 + 1), t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      osc.connect(g);
+      g.connect(this.masterGain);
+      osc.start(t);
+      osc.stop(t + dur + 0.02);
+    });
+  },
+
+  playGroundThud() {
+    if (!this.ctx || !SaveData.settings.sound) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(92, t);
+    osc.frequency.exponentialRampToValueAtTime(28, t + 0.18);
+    g.gain.setValueAtTime(0.38, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.20);
+    osc.connect(g);
+    g.connect(this.masterGain);
+    osc.start(t);
+    osc.stop(t + 0.22);
+  },
+
+  playSpecial() {
+    if (!this.ctx || !SaveData.settings.sound) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(180, t);
+    osc.frequency.exponentialRampToValueAtTime(620, t + 0.26);
+    const f = this.ctx.createBiquadFilter();
+    f.type = "lowpass";
+    f.frequency.setValueAtTime(1800, t);
+    g.gain.setValueAtTime(0.24, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.30);
+    osc.connect(f);
+    f.connect(g);
+    g.connect(this.masterGain);
+    osc.start(t);
+    osc.stop(t + 0.32);
+  },
+
+  playGong(deep = false) {
+    if (!this.ctx || !SaveData.settings.sound) return;
+    const t = this.ctx.currentTime;
+    const base = deep ? 110 : 164.8;
+    const ratios = [1, 1.414, 1.73, 2.23, 2.86];
+    ratios.forEach((r, i) => {
+      const o = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      o.type = i === 0 ? "sine" : "triangle";
+      o.frequency.setValueAtTime(base * r, t);
+      o.frequency.exponentialRampToValueAtTime(base * r * 0.985, t + 1.4);
+      g.gain.setValueAtTime(0.22 / (i + 1), t);
+      g.gain.exponentialRampToValueAtTime(0.0008, t + 1.45);
+      o.connect(g);
+      g.connect(this.masterGain);
+      o.start(t);
+      o.stop(t + 1.5);
+    });
+  },
+
+  playUI(high = false) {
+    if (!this.ctx || !SaveData.settings.sound) return;
+    const t = this.ctx.currentTime;
+    const o = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    o.type = "triangle";
+    o.frequency.setValueAtTime(high ? 740 : 520, t);
+    o.frequency.exponentialRampToValueAtTime(high ? 980 : 360, t + 0.06);
+    g.gain.setValueAtTime(0.14, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
+    o.connect(g);
+    g.connect(this.masterGain);
+    o.start(t);
+    o.stop(t + 0.08);
+  }
+};
+
+/* ============================================================================
+   5. RIG & ANIMATION — PROCEDURAL SKELETON, KEYFRAME POSES & SILHOUETTE ART
+   ============================================================================ */
+const DEG = Math.PI / 180;
+
+const RIG_DIMS = {
+  torso: 54,
+  neck: 10,
+  headRadius: 13.5,
+  upperArm: 31,
+  lowerArm: 30,
+  thigh: 43,
+  calf: 43
+};
+
+/*
+  Angle convention (facing = +1 right, mirrored automatically for facing = -1):
+  - hipH: vertical height of pelvis above fighter.y (ground foot level = 82 neutral)
+  - torso: 0 = straight up, +deg = lean forward, -deg = lean back
+  - head:  relative to torso (+deg = nod forward)
+  - lSh / rSh (shoulders): 0 = straight down, +90 = horizontal forward, +180 = straight up, -deg = back
+  - lEl / rEl (elbows): relative bend upward/forward from upper arm
+  - lHip / rHip (hips): 0 = straight down, +90 = horizontal forward kick, -deg = leg back
+  - lKn / rKn (knees): relative bend backward (-deg bends heel toward rear)
+  - wep: weapon angle offset relative to front forearm (rSh + rEl + wep)
+  - wep2: secondary hand weapon offset (for dual daggers)
+*/
+const BASE_POSE = {
+  hipH: 81, torso: 8, head: 2,
+  lSh: 26, lEl: 78,
+  rSh: -14, rEl: 68,
+  lHip: -20, lKn: -18,
+  rHip: 24, rKn: -34,
+  wep: 68, wep2: 50
+};
+
+function makePose(overrides) {
+  return Object.assign({}, BASE_POSE, overrides);
+}
+
+const POSES = {
+  // Stances per weapon
+  idle_sword:   makePose({ hipH: 81, torso: 9,  lSh: 35, lEl: 75, rSh: 18,  rEl: 58, wep: 62 }),
+  idle_daggers: makePose({ hipH: 77, torso: 16, lSh: 42, lEl: 72, rSh: -18, rEl: 75, wep: -25, wep2: 20 }),
+  idle_staff:   makePose({ hipH: 81, torso: 7,  lSh: 38, lEl: 55, rSh: -12, rEl: 52, wep: 72 }),
+  idle_axe:     makePose({ hipH: 79, torso: 12, lSh: 28, lEl: 62, rSh: -24, rEl: 55, wep: 82 }),
+  idle_breath:  makePose({ hipH: 79, torso: 12, lSh: 30, lEl: 82, rSh: 12,  rEl: 64, wep: 58 }),
+
+  // Walk 4-phase cycle
+  walk_1: makePose({ hipH: 82, torso: 13, lHip: 28,  lKn: -24, rHip: -24, rKn: -14, lSh: -16, lEl: 62, rSh: 26, rEl: 66, wep: 58 }),
+  walk_2: makePose({ hipH: 84, torso: 11, lHip: 6,   lKn: -10, rHip: 8,   rKn: -42, lSh: 8,   lEl: 68, rSh: 12, rEl: 64, wep: 62 }),
+  walk_3: makePose({ hipH: 82, torso: 13, lHip: -24, lKn: -14, rHip: 28,  rKn: -24, lSh: 28,  lEl: 68, rSh: -14,rEl: 60, wep: 66 }),
+  walk_4: makePose({ hipH: 84, torso: 11, lHip: 8,   lKn: -42, rHip: 6,   rKn: -10, lSh: 10,  lEl: 66, rSh: 10, rEl: 64, wep: 62 }),
+
+  // Jump, Crouch, Block, Parry
+  jump_rise: makePose({ hipH: 76, torso: 14, lHip: 48, lKn: -75, rHip: 22, rKn: -55, lSh: 45, lEl: 70, rSh: -20, rEl: 65, wep: 55 }),
+  jump_fall: makePose({ hipH: 80, torso: 8,  lHip: -12,lKn: -32, rHip: 28, rKn: -38, lSh: 55, lEl: 50, rSh: -15, rEl: 50, wep: 68 }),
+  crouch:    makePose({ hipH: 52, torso: 26, lHip: 55, lKn: -98, rHip: 68, rKn: -108,lSh: 36, lEl: 82, rSh: 10,  rEl: 76, wep: 52 }),
+  block:     makePose({ hipH: 78, torso: -4, lSh: 52,  lEl: 86,  rSh: 46,  rEl: 82,  lHip:-22,lKn: -22,rHip: 26, rKn: -36,wep: 80, wep2: 80 }),
+  parry:     makePose({ hipH: 80, torso: 12, lSh: 78,  lEl: 42,  rSh: 68,  rEl: 35,  wep: 74 }),
+
+  // Dodge-roll frames
+  dodge_1: makePose({ hipH: 46, torso: 68,  head: 24, lHip: 65, lKn: -115, rHip: 45, rKn: -110, lSh: 70, lEl: 65, rSh: 55, rEl: 70, wep: -30 }),
+  dodge_2: makePose({ hipH: 34, torso: 125, head: 30, lHip: 85, lKn: -125, rHip: 75, rKn: -120, lSh: 90, lEl: 85, rSh: 85, rEl: 85, wep: -45 }),
+  dodge_3: makePose({ hipH: 56, torso: 36,  head: 10, lHip: 42, lKn: -80,  rHip: -10,rKn: -45,  lSh: 35, lEl: 70, rSh: 15, rEl: 65, wep: 45 }),
+
+  // Hit-react, Knockdown, Get-up, Victory, Death
+  hit_light: makePose({ hipH: 80, torso: -18, head: -20, lSh: 12, lEl: 45, rSh: -28, rEl: 40, lHip: -16, rHip: 22, wep: 45 }),
+  hit_heavy: makePose({ hipH: 77, torso: -32, head: -30, lSh: -15,lEl: 30, rSh: -45, rEl: 25, lHip: -10, rHip: 34, wep: 30 }),
+  kd_air:    makePose({ hipH: 56, torso: -62, head: -22, lSh: 45, lEl: 25, rSh: 25,  rEl: 20, lHip: 38,  lKn: -30, rHip: 18, rKn: -20, wep: 15 }),
+  kd_ground: makePose({ hipH: 15, torso: -87, head: -8,  lSh: -55,lEl: 20, rSh: -35, rEl: 25, lHip: 82,  lKn: -12, rHip: 76, rKn: -8,  wep: 10 }),
+  getup_1:   makePose({ hipH: 38, torso: 42,  head: 10,  lSh: 12, lEl: 15, rSh: 32,  rEl: 45, lHip: 62,  lKn: -105,rHip: 25, rKn: -85, wep: 40 }),
+  getup_2:   makePose({ hipH: 66, torso: 20,  head: 4,   lSh: 30, lEl: 65, rSh: 15,  rEl: 60, lHip: 30,  lKn: -55, rHip: -12,rKn: -28, wep: 58 }),
+  victory_1: makePose({ hipH: 84, torso: -4,  head: -6,  lSh: 24, lEl: 68, rSh: 145, rEl: 18, lHip: -16, lKn: -12, rHip: 18, rKn: -22, wep: 22 }),
+  victory_2: makePose({ hipH: 83, torso: 4,   head: 6,   lSh: 42, lEl: 85, rSh: 42,  rEl: 85, lHip: -12, lKn: -10, rHip: 14, rKn: -16, wep: 78 }),
+  death:     makePose({ hipH: 13, torso: -89, head: -15, lSh: -78,lEl: 8,  rSh: -50, rEl: 12, lHip: 86,  lKn: -6,  rHip: 80, rKn: -4,  wep: 4 }),
+
+  // Martial Arts — Punches, Kicks, Crouch & Air
+  punch_wind: makePose({ hipH: 80, torso: -6, lSh: 40, lEl: 75, rSh: -38, rEl: 95, wep: -50 }),
+  punch_1:    makePose({ hipH: 80, torso: 16, lSh: 92, lEl: 4,  rSh: -18, rEl: 78, rHip: 28, rKn: -36, wep: -40 }),
+  punch_2:    makePose({ hipH: 79, torso: 24, lSh: 18, lEl: 80, rSh: 94,  rEl: 5,  rHip: 34, rKn: -42, wep: -35 }),
+  punch_3:    makePose({ hipH: 78, torso: 30, lSh: -32,lEl: 55, rSh: 102, rEl: 8,  rHip: 40, rKn: -46, wep: -15 }),
+
+  kick_chamber: makePose({ hipH: 82, torso: -8, lHip: -8, lKn: -14, rHip: 78, rKn: -95, lSh: 40, lEl: 75, rSh: 22, rEl: 70 }),
+  kick_1:       makePose({ hipH: 82, torso: -10,lHip: -10,lKn: -12, rHip: 94, rKn: -4,  lSh: 45, lEl: 70, rSh: -18,rEl: 65 }),
+  kick_2:       makePose({ hipH: 81, torso: -22,lHip: -6, lKn: -10, rHip: 122,rKn: -3,  lSh: 52, lEl: 65, rSh: -28,rEl: 58 }),
+  kick_3:       makePose({ hipH: 78, torso: -28,lHip: -4, lKn: -12, rHip: 132,rKn: -2,  lSh: -25,lEl: 55, rSh: 62, rEl: 50 }),
+
+  crouch_punch: makePose({ hipH: 50, torso: 30, lHip: 58, lKn: -100, rHip: 72, rKn: -110, lSh: 15, lEl: 75, rSh: 88, rEl: 6, wep: -30 }),
+  crouch_sweep: makePose({ hipH: 40, torso: -18,lHip: 52, lKn: -112, rHip: 78, rKn: -4,   lSh: -22,lEl: 35, rSh: 38, rEl: 55 }),
+
+  air_punch:    makePose({ hipH: 76, torso: 26, lHip: 45, lKn: -75, rHip: -15,rKn: -40, lSh: 20, lEl: 70, rSh: 72, rEl: 6 }),
+  air_kick:     makePose({ hipH: 76, torso: -16,lHip: 42, lKn: -88, rHip: 82, rKn: -2,  lSh: 55, lEl: 55, rSh: -28,rEl: 50 }),
+
+  throw_wind:   makePose({ hipH: 80, torso: -12,lSh: -35, lEl: 95, rSh: 25, rEl: 65 }),
+  throw_rel:    makePose({ hipH: 80, torso: 22, lSh: 94,  lEl: 6,  rSh: -20,rEl: 65 }),
+
+  // Weapon Slashes & Specials (rich postures for Sword, Daggers, Staff, Axe)
+  slash_wind_hi: makePose({ hipH: 82, torso: -14, lSh: 55, lEl: 65, rSh: 138, rEl: 35, wep: 68, wep2: 65 }),
+  slash_hit_mid: makePose({ hipH: 78, torso: 24,  lSh: 28, lEl: 52, rSh: 68,  rEl: 12, wep: -8, wep2: 12 }),
+  slash_wind_lo: makePose({ hipH: 77, torso: 10,  lSh: -22,lEl: 58, rSh: -36, rEl: 45, wep: -42,wep2: -35 }),
+  slash_hit_up:  makePose({ hipH: 83, torso: 14,  lSh: 48, lEl: 48, rSh: 122, rEl: 14, wep: 24, wep2: 30 }),
+  slash_thrust:  makePose({ hipH: 75, torso: 32,  lHip:-32,lKn: -16,rHip: 42, rKn: -48,lSh: 18, lEl: 65, rSh: 92, rEl: 3, wep: 0, wep2: 5 }),
+
+  heavy_wind:    makePose({ hipH: 84, torso: -24, lSh: 132,lEl: 42, rSh: 156, rEl: 32, lHip:-14,rHip: 28, wep: 78, wep2: 72 }),
+  heavy_slam:    makePose({ hipH: 68, torso: 38,  lSh: 45, lEl: 25, rSh: 52,  rEl: 10, lHip:-28,rHip: 46, rKn: -54,wep: -26,wep2: -22 }),
+
+  crouch_slash:  makePose({ hipH: 48, torso: 34,  lHip:58, lKn: -102,rHip: 74,rKn: -110,lSh:22, lEl: 60, rSh: 76, rEl: 8, wep: -10,wep2: 8 }),
+  air_slash:     makePose({ hipH: 76, torso: 28,  lHip:48, lKn: -78, rHip:-12,rKn: -42, lSh:35, lEl: 50, rSh: 64, rEl: 10,wep: -18,wep2: 0 }),
+
+  spec_spin:     makePose({ hipH: 78, torso: 20,  lSh: 92, lEl: 8,   rSh: -85,rEl: 10, wep: 8,  wep2: -8 }),
+  spec_leap:     makePose({ hipH: 86, torso: -10, lHip:58, lKn: -85, rHip: 34,rKn: -65,lSh: 140,lEl: 25, rSh: 152,rEl: 20,wep: 60, wep2: 60 })
+};
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+function easeOutCubic(t) {
+  const inv = 1 - t;
+  return 1 - inv * inv * inv;
+}
+
+function interpolatePoses(pA, pB, rawT) {
+  const t = Math.max(0, Math.min(1, rawT));
+  const out = {};
+  for (const k in BASE_POSE) {
+    out[k] = lerp(pA[k], pB[k], t);
+  }
+  return out;
+}
+
+/* Compute Forward Kinematics world positions of all joints & weapon tips */
+function computeSkeleton(fighter, pose) {
+  const f = fighter.facing;
+  const hipX = fighter.x;
+  let hipY = fighter.y - pose.hipH;
+
+  const seg = (x, y, deg, len, torsoMode = false) => {
+    const r = deg * DEG;
+    if (torsoMode) {
+      return { x: x + Math.sin(r) * len * f, y: y - Math.cos(r) * len };
+    }
+    return { x: x + Math.sin(r) * len * f, y: y + Math.cos(r) * len };
+  };
+
+  // Preliminary legs to prevent feet sinking below ground when grounded
+  let lKnee = seg(hipX - 3 * f, hipY, pose.lHip, RIG_DIMS.thigh);
+  let lFoot = seg(lKnee.x, lKnee.y, pose.lHip + pose.lKn, RIG_DIMS.calf);
+  let rKnee = seg(hipX + 3 * f, hipY, pose.rHip, RIG_DIMS.thigh);
+  let rFoot = seg(rKnee.x, rKnee.y, pose.rHip + pose.rKn, RIG_DIMS.calf);
+
+  if (fighter.y >= CONFIG.GROUND_Y - 1 && fighter.state !== "knockdown" && fighter.state !== "death") {
+    const lowest = Math.max(lFoot.y, rFoot.y);
+    if (lowest > fighter.y) {
+      const lift = lowest - fighter.y;
+      hipY -= lift;
+      lKnee.y -= lift; lFoot.y -= lift;
+      rKnee.y -= lift; rFoot.y -= lift;
+    }
+  }
+
+  const hip = { x: hipX, y: hipY };
+  const chest = seg(hip.x, hip.y, pose.torso, RIG_DIMS.torso * 0.62, true);
+  const shoulder = seg(hip.x, hip.y, pose.torso, RIG_DIMS.torso, true);
+  const neck = seg(shoulder.x, shoulder.y, pose.torso + pose.head * 0.5, RIG_DIMS.neck, true);
+  const head = seg(neck.x, neck.y, pose.torso + pose.head, RIG_DIMS.headRadius * 0.9, true);
+
+  const lShoulder = { x: shoulder.x - 4 * f, y: shoulder.y + 3 };
+  const rShoulder = { x: shoulder.x + 4 * f, y: shoulder.y + 3 };
+
+  const lElbow = seg(lShoulder.x, lShoulder.y, pose.lSh, RIG_DIMS.upperArm);
+  const lForeDeg = pose.lSh + pose.lEl;
+  const lHand = seg(lElbow.x, lElbow.y, lForeDeg, RIG_DIMS.lowerArm);
+
+  const rElbow = seg(rShoulder.x, rShoulder.y, pose.rSh, RIG_DIMS.upperArm);
+  const rForeDeg = pose.rSh + pose.rEl;
+  const rHand = seg(rElbow.x, rElbow.y, rForeDeg, RIG_DIMS.lowerArm);
+
+  const wepDef = WEAPONS[fighter.weaponId] || WEAPONS.sword;
+  const reach = wepDef.reach * (fighter.isBoss ? 1.16 : 1.0);
+  const wepDeg = rForeDeg + pose.wep;
+
+  // Staff extends behind hand as pommel as well as forward tip
+  const backGrip = fighter.weaponId === "staff" ? 36 : 10;
+  const wepBase = seg(rHand.x, rHand.y, wepDeg + 180, backGrip);
+  const wepTip = seg(rHand.x, rHand.y, wepDeg, reach);
+
+  let wep2Base = null, wep2Tip = null;
+  if (wepDef.dual) {
+    const wep2Deg = lForeDeg + pose.wep2;
+    wep2Base = seg(lHand.x, lHand.y, wep2Deg + 180, 8);
+    wep2Tip = seg(lHand.x, lHand.y, wep2Deg, reach);
+  }
+
+  return {
+    hip, chest, shoulder, neck, head,
+    lShoulder, lElbow, lHand,
+    rShoulder, rElbow, rHand,
+    lKnee, lFoot, rKnee, rFoot,
+    wepBase, wepTip, wepDeg,
+    wep2Base, wep2Tip
+  };
+}
+
+/* Draw organic tapered silhouette limb between two points */
+function drawTaperedLimb(ctx, p1, p2, r1, r2, color = "#07070c") {
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const nx = -dy / len;
+  const ny = dx / len;
+
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(p1.x + nx * r1, p1.y + ny * r1);
+  ctx.lineTo(p2.x + nx * r2, p2.y + ny * r2);
+  ctx.arc(p2.x, p2.y, r2, Math.atan2(ny, nx), Math.atan2(-ny, -nx), false);
+  ctx.lineTo(p1.x - nx * r1, p1.y - ny * r1);
+  ctx.arc(p1.x, p1.y, r1, Math.atan2(-ny, -nx), Math.atan2(ny, nx), false);
+  ctx.closePath();
+  ctx.fill();
+}
+
+/* Draw procedural silhouette weapon (Sword, Dual Daggers, Staff, Axe, Boss Odachi) */
+function drawWeaponShape(ctx, base, hand, tip, weaponId, accentHex, facing, isBoss) {
+  const dx = tip.x - hand.x;
+  const dy = tip.y - hand.y;
+  const angle = Math.atan2(dy, dx);
+  const reach = Math.hypot(dx, dy);
+
+  ctx.save();
+  ctx.translate(hand.x, hand.y);
+  ctx.rotate(angle);
+
+  ctx.fillStyle = "#08080e";
+  ctx.strokeStyle = accentHex;
+  ctx.lineWidth = 1.4;
+
+  if (weaponId === "sword") {
+    // Hilt & tsuba guard
+    ctx.fillRect(-16, -2.6, 18, 5.2);
+    ctx.fillRect(-1, -9, 4, 18);
+    // Curved katana / odachi blade
+    ctx.beginPath();
+    ctx.moveTo(2, -3.5);
+    ctx.quadraticCurveTo(reach * 0.58, -7.5 * facing, reach, -1.5 * facing);
+    ctx.quadraticCurveTo(reach * 0.92, 3.8, 2, 3.2);
+    ctx.closePath();
+    ctx.fill();
+    // Glowing edge glint
+    ctx.globalAlpha = isBoss ? 0.9 : 0.65;
+    ctx.beginPath();
+    ctx.moveTo(4, -3.2);
+    ctx.quadraticCurveTo(reach * 0.58, -7.2 * facing, reach, -1.5 * facing);
+    ctx.stroke();
+  } else if (weaponId === "daggers") {
+    ctx.fillRect(-10, -2.5, 11, 5);
+    ctx.fillRect(-1, -7, 3.5, 14);
+    ctx.beginPath();
+    ctx.moveTo(2, -4.5);
+    ctx.quadraticCurveTo(reach * 0.55, -7 * facing, reach, 0);
+    ctx.lineTo(2, 3.8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(3, -4);
+    ctx.quadraticCurveTo(reach * 0.55, -6.5 * facing, reach, 0);
+    ctx.stroke();
+  } else if (weaponId === "staff") {
+    // Full bo staff with glowing spirit rings at ends
+    ctx.beginPath();
+    ctx.roundRect(-36, -3.6, reach + 36, 7.2, 3);
+    ctx.fill();
+    ctx.fillStyle = accentHex;
+    ctx.globalAlpha = 0.8;
+    ctx.fillRect(reach - 14, -4.2, 10, 8.4);
+    ctx.fillRect(-32, -4.2, 9, 8.4);
+  } else if (weaponId === "axe") {
+    // Heavy haft
+    ctx.fillRect(-18, -3.5, reach + 12, 7);
+    // Bearded executioner crescent blade
+    const headX = reach * 0.72;
+    ctx.beginPath();
+    ctx.moveTo(headX - 8, -4);
+    ctx.quadraticCurveTo(headX + 12, -26, headX + 26, -22);
+    ctx.quadraticCurveTo(headX + 34, 0, headX + 20, 26);
+    ctx.quadraticCurveTo(headX + 2, 18, headX - 10, 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 0.75;
+    ctx.beginPath();
+    ctx.moveTo(headX + 25, -21);
+    ctx.quadraticCurveTo(headX + 33, 0, headX + 19, 25);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+/* Render complete fighter silhouette, armor, headgear, ribbons, eyes & trails */
+function renderFighter(ctx, fighter, timeSec) {
+  const sk = fighter.skeleton;
+  if (!sk) return;
+  const f = fighter.facing;
+  const armor = ARMORS[fighter.armorId] || ARMORS.wraps;
+  const accent = fighter.accentHex;
+
+  // 1. Dodge / Teleport Shadow Afterimages
+  for (let i = 0; i < fighter.afterimages.length; i++) {
+    const ghost = fighter.afterimages[i];
+    ctx.save();
+    ctx.globalAlpha = ghost.alpha * 0.34;
+    drawTaperedLimb(ctx, ghost.sk.hip, ghost.sk.shoulder, 13, 16, accent);
+    drawTaperedLimb(ctx, ghost.sk.rShoulder, ghost.sk.rHand, 7, 5, accent);
+    drawTaperedLimb(ctx, ghost.sk.rKnee, ghost.sk.rFoot, 8, 5, accent);
+    ctx.restore();
+  }
+
+  // 2. Ground Contact Shadow
+  const groundDist = Math.max(0, CONFIG.GROUND_Y - fighter.y);
+  const shadowScale = Math.max(0.35, 1 - groundDist / 260);
+  ctx.save();
+  ctx.fillStyle = "rgba(0, 0, 0, 0.52)";
+  ctx.beginPath();
+  ctx.ellipse(fighter.x, CONFIG.GROUND_Y + 3, 42 * shadowScale, 9 * shadowScale, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // 3. Rage Ready Spirit Aura (when Rage >= 50 or Boss Phase 2)
+  if (fighter.rage >= CONFIG.SPECIAL_RAGE_COST || (fighter.isBoss && fighter.hp < fighter.maxHp * 0.5)) {
+    const pulse = 0.75 + 0.25 * Math.sin(timeSec * 9);
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    const grad = ctx.createRadialGradient(sk.chest.x, sk.chest.y, 8, sk.chest.x, sk.chest.y, 72 * pulse);
+    grad.addColorStop(0, fighter.rage >= 99 ? accent : accent + "66");
+    grad.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.globalAlpha = fighter.rage >= 99 ? 0.38 : 0.20;
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(sk.chest.x, sk.chest.y, 72 * pulse, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // 4. Weapon Ribbon Trail (additive glowing arc during attacks)
+  if (fighter.trail.length > 1) {
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    for (let i = 1; i < fighter.trail.length; i++) {
+      const p0 = fighter.trail[i - 1];
+      const p1 = fighter.trail[i];
+      const frac = i / fighter.trail.length;
+      ctx.fillStyle = accent;
+      ctx.globalAlpha = frac * 0.46;
+      ctx.beginPath();
+      ctx.moveTo(p0.bx, p0.by);
+      ctx.lineTo(p0.tx, p0.ty);
+      ctx.lineTo(p1.tx, p1.ty);
+      ctx.lineTo(p1.bx, p1.by);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // 5. Flowing Sovereign Shadow Cape / Sash Ribbons
+  const wind = -fighter.vx * 0.04 - f * 16 + Math.sin(timeSec * 6 + fighter.x * 0.03) * 8;
+  if (armor.cape || fighter.isBoss) {
+    ctx.save();
+    ctx.fillStyle = "#080810";
+    ctx.beginPath();
+    ctx.moveTo(sk.shoulder.x - 4 * f, sk.shoulder.y + 4);
+    ctx.quadraticCurveTo(
+      sk.hip.x - (28 - wind * 0.6) * 1,
+      sk.hip.y + 12,
+      sk.hip.x + wind * 1.4 - f * 26,
+      sk.hip.y + 58
+    );
+    ctx.lineTo(sk.hip.x + wind * 0.9 - f * 8, sk.hip.y + 50);
+    ctx.quadraticCurveTo(sk.chest.x - 6 * f, sk.chest.y + 14, sk.shoulder.x + 2 * f, sk.shoulder.y + 8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Obi belt sash tails
+  ctx.save();
+  ctx.strokeStyle = "#08080f";
+  ctx.lineWidth = 4.5;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(sk.hip.x - 4 * f, sk.hip.y + 2);
+  ctx.quadraticCurveTo(sk.hip.x - 18 * f + wind * 0.5, sk.hip.y + 16, sk.hip.x - 26 * f + wind, sk.hip.y + 30);
+  ctx.stroke();
+  ctx.restore();
+
+  // 6. Back Leg & Back Arm (slightly deeper black-blue tint for readability)
+  const backShade = "#0c0c15";
+  const coreShade = fighter.flashFrames > 0 ? "#2c1424" : "#050509";
+
+  drawTaperedLimb(ctx, sk.hip, sk.lKnee, 11.5, 8.5, backShade);
+  drawTaperedLimb(ctx, sk.lKnee, sk.lFoot, 8.2, 5.2, backShade);
+  // Tabi foot
+  drawTaperedLimb(ctx, sk.lFoot, { x: sk.lFoot.x + 10 * f, y: sk.lFoot.y + 2 }, 5.2, 3.6, backShade);
+
+  if (sk.wep2Tip) {
+    drawWeaponShape(ctx, sk.wep2Base, sk.lHand, sk.wep2Tip, fighter.weaponId, accent, f, fighter.isBoss);
+  }
+  drawTaperedLimb(ctx, sk.lShoulder, sk.lElbow, 8.2, 6.5, backShade);
+  drawTaperedLimb(ctx, sk.lElbow, sk.lHand, 6.5, 4.8, backShade);
+
+  // 7. Sculpted Martial Torso + Armor Silhouette
+  ctx.save();
+  ctx.fillStyle = coreShade;
+  const tx = sk.shoulder.x - sk.hip.x;
+  const ty = sk.shoulder.y - sk.hip.y;
+  const tLen = Math.hypot(tx, ty) || 1;
+  const nx = -ty / tLen;
+  const ny = tx / tLen;
+
+  ctx.beginPath();
+  ctx.moveTo(sk.hip.x + nx * 11, sk.hip.y + ny * 11);
+  ctx.lineTo(sk.shoulder.x + nx * 16.5, sk.shoulder.y + ny * 16.5);
+  ctx.lineTo(sk.shoulder.x - nx * 15.5, sk.shoulder.y - ny * 15.5);
+  ctx.lineTo(sk.hip.x - nx * 11, sk.hip.y - ny * 11);
+  ctx.closePath();
+  ctx.fill();
+
+  // Kusazuri waist tassets on armored fighters
+  if (armor.shoulders >= 2) {
+    ctx.beginPath();
+    ctx.moveTo(sk.hip.x - 14, sk.hip.y - 2);
+    ctx.lineTo(sk.hip.x + 14, sk.hip.y - 2);
+    ctx.lineTo(sk.hip.x + 19, sk.hip.y + 16);
+    ctx.lineTo(sk.hip.x - 19, sk.hip.y + 16);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // 8. Front Leg
+  drawTaperedLimb(ctx, sk.hip, sk.rKnee, 12.2, 8.8, coreShade);
+  drawTaperedLimb(ctx, sk.rKnee, sk.rFoot, 8.6, 5.4, coreShade);
+  drawTaperedLimb(ctx, sk.rFoot, { x: sk.rFoot.x + 11 * f, y: sk.rFoot.y + 2 }, 5.4, 3.8, coreShade);
+
+  // 9. Head, Headgear & Glowing Spirit Eyes
+  drawTaperedLimb(ctx, sk.shoulder, sk.head, 6.5, 6.0, coreShade);
+  ctx.save();
+  ctx.fillStyle = coreShade;
+  ctx.beginPath();
+  ctx.arc(sk.head.x, sk.head.y, RIG_DIMS.headRadius, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Headgear silhouette
+  if (armor.hat === "headband") {
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(sk.head.x - 12, sk.head.y - 4);
+    ctx.lineTo(sk.head.x + 12, sk.head.y - 4);
+    ctx.stroke();
+    // Fluttering headband tail
+    ctx.strokeStyle = "#08080f";
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.moveTo(sk.head.x - 11 * f, sk.head.y - 4);
+    ctx.quadraticCurveTo(sk.head.x - 24 * f + wind * 0.4, sk.head.y - 2, sk.head.x - 34 * f + wind * 0.8, sk.head.y + 7);
+    ctx.stroke();
+  } else if (armor.hat === "kasa") {
+    // Iconic wide conical Ronin straw hat silhouette
+    ctx.beginPath();
+    ctx.moveTo(sk.head.x - 30, sk.head.y - 3);
+    ctx.quadraticCurveTo(sk.head.x, sk.head.y - 24, sk.head.x + 30, sk.head.y - 3);
+    ctx.quadraticCurveTo(sk.head.x, sk.head.y - 8, sk.head.x - 30, sk.head.y - 3);
+    ctx.closePath();
+    ctx.fill();
+  } else if (armor.hat === "kabuto" || armor.hat === "horns") {
+    // Samurai helmet + neck shikoro guard + crescent / demon horns
+    ctx.beginPath();
+    ctx.arc(sk.head.x, sk.head.y - 2, 15.5, Math.PI * 0.95, Math.PI * 2.15);
+    ctx.lineTo(sk.head.x - 17 * f, sk.head.y + 8);
+    ctx.closePath();
+    ctx.fill();
+
+    // Glowing or silhouette crest horns
+    ctx.strokeStyle = armor.hat === "horns" ? accent : "#08080f";
+    ctx.lineWidth = armor.hat === "horns" ? 3.0 : 2.6;
+    ctx.beginPath();
+    ctx.moveTo(sk.head.x + 5 * f, sk.head.y - 11);
+    ctx.quadraticCurveTo(sk.head.x + 16 * f, sk.head.y - 24, sk.head.x + 10 * f, sk.head.y - 31);
+    ctx.moveTo(sk.head.x + 2 * f, sk.head.y - 12);
+    ctx.quadraticCurveTo(sk.head.x - 8 * f, sk.head.y - 25, sk.head.x - 14 * f, sk.head.y - 29);
+    ctx.stroke();
+  }
+
+  // Fierce Glowing Spirit Eye Slit
+  if (fighter.state !== "death") {
+    ctx.shadowColor = accent;
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = "#ffffff";
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 2.2;
+    const ex = sk.head.x + 6.5 * f;
+    const ey = sk.head.y - 1.5;
+    ctx.beginPath();
+    ctx.moveTo(ex - 3.5 * f, ey - 1.5);
+    ctx.lineTo(ex + 4.5 * f, ey + 0.5);
+    ctx.lineTo(ex - 1.5 * f, ey + 2.2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // 10. Primary Weapon + Front Arm + Shoulder Pauldron
+  drawWeaponShape(ctx, sk.wepBase, sk.rHand, sk.wepTip, fighter.weaponId, accent, f, fighter.isBoss);
+  drawTaperedLimb(ctx, sk.rShoulder, sk.rElbow, 8.8, 6.8, coreShade);
+  drawTaperedLimb(ctx, sk.rElbow, sk.rHand, 6.8, 5.0, coreShade);
+
+  if (armor.shoulders >= 1) {
+    ctx.save();
+    ctx.fillStyle = coreShade;
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.ellipse(sk.rShoulder.x, sk.rShoulder.y + 2, 12, 7.5, f * 0.35, 0, Math.PI * 2);
+    ctx.fill();
+    if (armor.shoulders >= 2) ctx.stroke();
+    ctx.restore();
+  }
+
+  // Subtle rim highlight when blocking or invincible
+  if (fighter.invulnFrames > 0 && Math.floor(fighter.invulnFrames / 2) % 2 === 0) {
+    ctx.save();
+    ctx.strokeStyle = accent;
+    ctx.globalAlpha = 0.55;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(sk.chest.x, sk.chest.y, 38, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+/* ============================================================================
+   6. ARENAS, CAMERA & VISUAL FX — 4 PAINTED 3-LAYER PARALLAX BACKGROUNDS
+   ============================================================================ */
+const ArenaRenderer = {
+  ambientParticles: [],
+  currentId: "temple",
+
+  initParticles(arenaId) {
+    this.currentId = arenaId;
+    this.ambientParticles = [];
+    for (let i = 0; i < 38; i++) {
+      this.ambientParticles.push({
+        x: Math.random() * CONFIG.STAGE_W,
+        y: Math.random() * CONFIG.GROUND_Y,
+        r: 1.5 + Math.random() * 3.2,
+        vx: (Math.random() - 0.3) * 28,
+        vy: 12 + Math.random() * 26,
+        phase: Math.random() * Math.PI * 2
+      });
+    }
+  },
+
+  updateParticles(dt, arenaId) {
+    if (this.currentId !== arenaId || this.ambientParticles.length === 0) {
+      this.initParticles(arenaId);
+    }
+    for (const p of this.ambientParticles) {
+      p.phase += dt * 2.1;
+      if (arenaId === "bamboo" || arenaId === "ruins") {
+        // Floating fireflies / rising ash motes
+        p.x += Math.sin(p.phase) * 18 * dt;
+        p.y -= p.vy * 0.65 * dt;
+        if (p.y < 30) { p.y = CONFIG.GROUND_Y - 10; p.x = Math.random() * CONFIG.STAGE_W; }
+      } else {
+        // Drifting cherry blossoms / embers / sea mist
+        p.x += (p.vx + Math.sin(p.phase) * 16) * dt;
+        p.y += p.vy * dt;
+        if (p.y > CONFIG.GROUND_Y) { p.y = -10; p.x = Math.random() * CONFIG.STAGE_W; }
+        if (p.x > CONFIG.STAGE_W + 20) p.x = -20;
+        if (p.x < -20) p.x = CONFIG.STAGE_W + 20;
+      }
+    }
+  },
+
+  draw(ctx, arenaId, camX, timeSec, eclipse = false) {
+    const W = CONFIG.STAGE_W;
+    const H = CONFIG.STAGE_H;
+    const GY = CONFIG.GROUND_Y;
+    const pxFar = -camX * 0.14;
+    const pxMid = -camX * 0.38;
+    const pxNear = -camX * 1.0;
+
+    if (arenaId === "temple") {
+      // Sky Gradient
+      const sky = ctx.createLinearGradient(0, 0, 0, GY);
+      sky.addColorStop(0, "#14081c");
+      sky.addColorStop(0.38, "#451531");
+      sky.addColorStop(0.74, "#a82d3e");
+      sky.addColorStop(1, "#f29649");
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, H);
+
+      // Painted Dusk Sun + Halo
+      const sunX = W * 0.5 + pxFar * 0.4;
+      const sunY = 275;
+      const halo = ctx.createRadialGradient(sunX, sunY, 30, sunX, sunY, 240);
+      halo.addColorStop(0, "rgba(255, 224, 150, 0.95)");
+      halo.addColorStop(0.38, "rgba(255, 120, 70, 0.45)");
+      halo.addColorStop(1, "rgba(255, 60, 80, 0)");
+      ctx.fillStyle = halo;
+      ctx.fillRect(0, 0, W, GY);
+
+      ctx.fillStyle = "#ffe6a3";
+      ctx.beginPath();
+      ctx.arc(sunX, sunY, 82, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Layer 1 (Far): Mountain Peaks & Distant Pagoda
+      ctx.fillStyle = "#2b1029";
+      ctx.beginPath();
+      ctx.moveTo(0, GY);
+      const peaks1 = [-100, 380, 140, 260, 360, 355, 620, 290, 910, 235, 1160, 340, 1420, 280];
+      for (let i = 0; i < peaks1.length; i += 2) {
+        ctx.lineTo(peaks1[i] + pxFar, peaks1[i + 1]);
+      }
+      ctx.lineTo(W + 100, GY);
+      ctx.closePath();
+      ctx.fill();
+
+      // Distant Pagoda Silhouette on right peak
+      const pagX = 910 + pxFar;
+      ctx.fillStyle = "#1c0a1d";
+      for (let tier = 0; tier < 4; tier++) {
+        const tw = 44 - tier * 7;
+        const ty = 235 - tier * 18;
+        ctx.fillRect(pagX - tw * 0.55, ty, tw * 1.1, 14);
+        ctx.beginPath();
+        ctx.moveTo(pagX - tw, ty + 3);
+        ctx.quadraticCurveTo(pagX, ty - 8, pagX + tw, ty + 3);
+        ctx.fill();
+      }
+
+      // Layer 2 (Mid): Grand Curved Torii Gate, Crooked Pines & Glowing Lanterns
+      const toriiX = 640 + pxMid;
+      ctx.fillStyle = "#120714";
+      ctx.fillRect(toriiX - 108, 225, 18, 370);
+      ctx.fillRect(toriiX + 90, 225, 18, 370);
+      ctx.fillRect(toriiX - 132, 258, 264, 15);
+      ctx.beginPath();
+      ctx.moveTo(toriiX - 162, 212);
+      ctx.quadraticCurveTo(toriiX, 236, toriiX + 162, 212);
+      ctx.lineTo(toriiX + 148, 232);
+      ctx.quadraticCurveTo(toriiX, 250, toriiX - 148, 232);
+      ctx.closePath();
+      ctx.fill();
+
+      // Swaying Temple Lanterns
+      [-92, 92].forEach((off, idx) => {
+        const sway = Math.sin(timeSec * 2.1 + idx) * 5;
+        const lx = toriiX + off + sway;
+        const ly = 296;
+        const lg = ctx.createRadialGradient(lx, ly, 2, lx, ly, 42);
+        lg.addColorStop(0, "rgba(255, 195, 75, 0.9)");
+        lg.addColorStop(1, "rgba(255, 100, 40, 0)");
+        ctx.fillStyle = lg;
+        ctx.beginPath(); ctx.arc(lx, ly, 42, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#ffd166";
+        ctx.fillRect(lx - 7, ly - 11, 14, 22);
+      });
+
+      // Ancient Pine silhouettes
+      [210 + pxMid, 1090 + pxMid].forEach((tx, idx) => {
+        const dir = idx === 0 ? 1 : -1;
+        ctx.strokeStyle = "#0e0510";
+        ctx.lineWidth = 18;
+        ctx.beginPath();
+        ctx.moveTo(tx, GY);
+        ctx.quadraticCurveTo(tx + 25 * dir, 460, tx + 65 * dir, 365);
+        ctx.stroke();
+        ctx.fillStyle = "#0e0510";
+        for (let c = 0; c < 4; c++) {
+          ctx.beginPath();
+          ctx.ellipse(tx + (35 + c * 22) * dir, 395 - c * 18, 52 - c * 6, 16, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+
+    } else if (arenaId === "bamboo") {
+      const sky = ctx.createLinearGradient(0, 0, 0, GY);
+      sky.addColorStop(0, "#051417");
+      sky.addColorStop(0.45, "#0d2f2f");
+      sky.addColorStop(0.82, "#1f594d");
+      sky.addColorStop(1, "#69ab8e");
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, H);
+
+      // Luminous Jade Moon + Diagonal Mist Beams
+      const mx = 860 + pxFar * 0.5;
+      ctx.fillStyle = "rgba(220, 255, 240, 0.92)";
+      ctx.beginPath(); ctx.arc(mx, 165, 58, 0, Math.PI * 2); ctx.fill();
+
+      ctx.save();
+      ctx.fillStyle = "rgba(185, 255, 225, 0.045)";
+      for (let b = 0; b < 4; b++) {
+        const bx = 220 + b * 250 + pxFar;
+        ctx.beginPath();
+        ctx.moveTo(bx, 0);
+        ctx.lineTo(bx + 110, 0);
+        ctx.lineTo(bx - 90, GY);
+        ctx.lineTo(bx - 210, GY);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+
+      // Layer 1 (Far): Misty Hills & Back Bamboo
+      ctx.fillStyle = "#0b2624";
+      ctx.beginPath();
+      ctx.moveTo(0, GY);
+      ctx.quadraticCurveTo(340 + pxFar, 350, 720 + pxFar, 430);
+      ctx.quadraticCurveTo(1060 + pxFar, 340, W + 120, 420);
+      ctx.lineTo(W + 120, GY);
+      ctx.closePath();
+      ctx.fill();
+
+      // Layer 2 (Mid): Towering Swaying Bamboo Stalks
+      for (let i = 0; i < 20; i++) {
+        const bx = -60 + i * 76 + pxMid + (i % 3) * 14;
+        const sway = Math.sin(timeSec * 1.3 + i * 0.7) * 8;
+        const bw = 6 + (i % 3) * 3.5;
+        ctx.strokeStyle = i % 2 === 0 ? "#071a19" : "#0d2926";
+        ctx.lineWidth = bw;
+        ctx.beginPath();
+        ctx.moveTo(bx, GY);
+        ctx.quadraticCurveTo(bx + sway * 0.5, GY * 0.5, bx + sway, -20);
+        ctx.stroke();
+
+        // Bamboo nodes
+        ctx.strokeStyle = "rgba(140, 220, 190, 0.16)";
+        ctx.lineWidth = 1.5;
+        for (let ny = 90; ny < GY; ny += 88) {
+          const curX = bx + sway * (1 - ny / GY);
+          ctx.beginPath();
+          ctx.moveTo(curX - bw * 0.65, ny);
+          ctx.lineTo(curX + bw * 0.65, ny);
+          ctx.stroke();
+        }
+      }
+
+    } else if (arenaId === "ruins") {
+      const sky = ctx.createLinearGradient(0, 0, 0, GY);
+      sky.addColorStop(0, "#090b17");
+      sky.addColorStop(0.45, "#1b1e3b");
+      sky.addColorStop(0.82, "#3a3d66");
+      sky.addColorStop(1, "#787ca6");
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, H);
+
+      const mx = 420 + pxFar * 0.4;
+      ctx.fillStyle = "rgba(225, 228, 255, 0.85)";
+      ctx.beginPath(); ctx.arc(mx, 175, 52, 0, Math.PI * 2); ctx.fill();
+
+      // Layer 1 (Far): Broken Monolith Arches
+      ctx.fillStyle = "#16182e";
+      for (let i = 0; i < 5; i++) {
+        const ax = 120 + i * 270 + pxFar;
+        const ah = 180 + (i % 3) * 55;
+        ctx.fillRect(ax, GY - ah, 36, ah);
+        ctx.fillRect(ax + 95, GY - ah + 35, 34, ah - 35);
+        if (i % 2 === 0) ctx.fillRect(ax - 10, GY - ah - 18, 150, 22);
+      }
+
+      // Layer 2 (Mid): Shattered Columns & Rolling Mist
+      ctx.fillStyle = "#0d0e1c";
+      [180, 470, 830, 1110].forEach((cx, i) => {
+        const x = cx + pxMid;
+        const h = 230 + (i % 2) * 95;
+        ctx.beginPath();
+        ctx.moveTo(x - 24, GY);
+        ctx.lineTo(x - 20, GY - h);
+        ctx.lineTo(x + 6, GY - h - 18);
+        ctx.lineTo(x + 22, GY - h + 14);
+        ctx.lineTo(x + 24, GY);
+        ctx.closePath();
+        ctx.fill();
+      });
+
+      const fog = ctx.createLinearGradient(0, GY - 130, 0, GY);
+      fog.addColorStop(0, "rgba(180, 185, 230, 0)");
+      fog.addColorStop(1, "rgba(165, 170, 220, 0.28)");
+      ctx.fillStyle = fog;
+      ctx.fillRect(0, GY - 130, W, 130);
+
+    } else {
+      // Night Harbour (+ Blood Eclipse Boss Mode)
+      const sky = ctx.createLinearGradient(0, 0, 0, 440);
+      if (eclipse) {
+        sky.addColorStop(0, "#090208");
+        sky.addColorStop(0.5, "#2d0719");
+        sky.addColorStop(1, "#6e0f2b");
+      } else {
+        sky.addColorStop(0, "#040812");
+        sky.addColorStop(0.55, "#0d1f3a");
+        sky.addColorStop(1, "#1e496d");
+      }
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, 445);
+
+      const mx = 640 + pxFar * 0.4;
+      const my = 175;
+      if (eclipse) {
+        const corona = ctx.createRadialGradient(mx, my, 46, mx, my, 155);
+        corona.addColorStop(0, "#ff1e56");
+        corona.addColorStop(0.35, "rgba(255, 30, 86, 0.48)");
+        corona.addColorStop(1, "rgba(255, 30, 86, 0)");
+        ctx.fillStyle = corona;
+        ctx.beginPath(); ctx.arc(mx, my, 155, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#050206";
+        ctx.beginPath(); ctx.arc(mx, my, 50, 0, Math.PI * 2); ctx.fill();
+      } else {
+        ctx.fillStyle = "#e2f1ff";
+        ctx.beginPath(); ctx.arc(mx, my, 52, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // Harbour Water & Shimmering Reflections
+      const water = ctx.createLinearGradient(0, 440, 0, GY);
+      water.addColorStop(0, eclipse ? "#360718" : "#102c47");
+      water.addColorStop(1, "#05070d");
+      ctx.fillStyle = water;
+      ctx.fillRect(0, 440, W, GY - 440);
+
+      ctx.fillStyle = eclipse ? "rgba(255, 50, 95, 0.28)" : "rgba(210, 235, 255, 0.22)";
+      for (let r = 0; r < 14; r++) {
+        const ry = 448 + r * 10;
+        const rw = (95 - r * 4) + Math.sin(timeSec * 3 + r) * 14;
+        ctx.fillRect(mx - rw * 0.5, ry, rw, 3);
+      }
+
+      // Layer 1 (Far): Junk Ship Silhouette
+      const sx = 300 + pxFar + Math.sin(timeSec * 0.8) * 6;
+      const sy = 442 + Math.sin(timeSec * 1.4) * 2.5;
+      ctx.fillStyle = "#070b14";
+      ctx.beginPath();
+      ctx.moveTo(sx - 85, sy - 14);
+      ctx.lineTo(sx + 90, sy - 18);
+      ctx.lineTo(sx + 66, sy + 8);
+      ctx.lineTo(sx - 68, sy + 8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillRect(sx - 8, sy - 115, 5, 115);
+      ctx.beginPath();
+      ctx.moveTo(sx - 5, sy - 108);
+      ctx.quadraticCurveTo(sx + 52, sy - 75, sx + 42, sy - 26);
+      ctx.lineTo(sx - 5, sy - 28);
+      ctx.closePath();
+      ctx.fill();
+
+      // Layer 2 (Mid): Harbour Pier Posts & Lantern String
+      ctx.strokeStyle = "#080910";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(-40 + pxMid, 330);
+      ctx.quadraticCurveTo(640 + pxMid, 375, 1340 + pxMid, 325);
+      ctx.stroke();
+
+      for (let p = 0; p < 6; p++) {
+        const postX = 90 + p * 235 + pxMid;
+        ctx.fillStyle = "#080910";
+        ctx.fillRect(postX - 9, 320, 18, GY - 320);
+        const lanternGlow = eclipse ? "rgba(255, 60, 100, 0.7)" : "rgba(255, 185, 70, 0.75)";
+        const lg = ctx.createRadialGradient(postX, 348, 2, postX, 348, 28);
+        lg.addColorStop(0, lanternGlow);
+        lg.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = lg;
+        ctx.beginPath(); ctx.arc(postX, 348, 28, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    // Layer 3 (Near): Arena Floor, Perspective Seams & Boundary Markers
+    const floorGrad = ctx.createLinearGradient(0, GY, 0, H);
+    floorGrad.addColorStop(0, "#0b0b12");
+    floorGrad.addColorStop(1, "#030306");
+    ctx.fillStyle = floorGrad;
+    ctx.fillRect(0, GY, W, H - GY);
+
+    // Horizon rim highlight along ground plane
+    ctx.strokeStyle = eclipse ? "rgba(255, 46, 85, 0.45)" : "rgba(255, 255, 255, 0.16)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, GY);
+    ctx.lineTo(W, GY);
+    ctx.stroke();
+
+    // Perspective stone / plank seams scrolling with foreground camera
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
+    ctx.lineWidth = 1.5;
+    for (let gx = -160; gx <= W + 260; gx += 90) {
+      const topX = gx + pxNear;
+      const botX = W * 0.5 + (topX - W * 0.5) * 1.48;
+      ctx.beginPath();
+      ctx.moveTo(topX, GY);
+      ctx.lineTo(botX, H);
+      ctx.stroke();
+    }
+
+    // Atmospheric Particles (blossoms, fireflies, ash, mist)
+    ctx.save();
+    for (const p of this.ambientParticles) {
+      if (arenaId === "bamboo") {
+        ctx.fillStyle = "#bef264";
+        ctx.globalAlpha = 0.35 + 0.4 * Math.abs(Math.sin(p.phase));
+      } else if (arenaId === "temple") {
+        ctx.fillStyle = "#fda4af";
+        ctx.globalAlpha = 0.55;
+      } else if (arenaId === "ruins") {
+        ctx.fillStyle = "#c4b5fd";
+        ctx.globalAlpha = 0.35;
+      } else {
+        ctx.fillStyle = eclipse ? "#fb7185" : "#bae6fd";
+        ctx.globalAlpha = 0.32;
+      }
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+};
+
+/* Dynamic Camera, Hitarks, Dust, Shockwaves & Floating Damage Numbers */
+const FX = {
+  sparks: [],
+  dusts: [],
+  rings: [],
+  popups: [],
+  shakeMag: 0,
+  shakeX: 0,
+  shakeY: 0,
+  flashAlpha: 0,
+  flashColor: "#ffffff",
+
+  clear() {
+    this.sparks = [];
+    this.dusts = [];
+    this.rings = [];
+    this.popups = [];
+    this.shakeMag = 0;
+    this.flashAlpha = 0;
+  },
+
+  addShake(mag) {
+    this.shakeMag = Math.max(this.shakeMag, mag);
+  },
+
+  spawnHitSparks(x, y, color, count = 14, dir = 0) {
+    for (let i = 0; i < count; i++) {
+      const spread = (Math.random() - 0.5) * 1.9;
+      const ang = (dir !== 0 ? (dir > 0 ? 0 : Math.PI) : Math.random() * Math.PI * 2) + spread;
+      const spd = 160 + Math.random() * 380;
+      this.sparks.push({
+        x, y,
+        vx: Math.cos(ang) * spd,
+        vy: Math.sin(ang) * spd - 60,
+        life: 0.16 + Math.random() * 0.18,
+        maxLife: 0.34,
+        color,
+        len: 8 + Math.random() * 14
+      });
+    }
+  },
+
+  spawnDust(x, y, count = 7) {
+    for (let i = 0; i < count; i++) {
+      this.dusts.push({
+        x: x + (Math.random() - 0.5) * 28,
+        y: y - Math.random() * 6,
+        vx: (Math.random() - 0.5) * 95,
+        vy: -18 - Math.random() * 42,
+        r: 7 + Math.random() * 11,
+        life: 0.35 + Math.random() * 0.2,
+        maxLife: 0.55
+      });
+    }
+  },
+
+  spawnRing(x, y, color, maxR = 85) {
+    this.rings.push({ x, y, r: 8, maxR, color, life: 0.28, maxLife: 0.28 });
+  },
+
+  spawnPopup(x, y, text, color = "#ffffff", scale = 1.0) {
+    this.popups.push({
+      x: x + (Math.random() - 0.5) * 18,
+      y,
+      vy: -78,
+      text,
+      color,
+      scale,
+      life: 0.85,
+      maxLife: 0.85
+    });
+  },
+
+  update(dt) {
+    if (this.shakeMag > 0.2) {
+      this.shakeX = (Math.random() - 0.5) * 2 * this.shakeMag;
+      this.shakeY = (Math.random() - 0.5) * 2 * this.shakeMag;
+      this.shakeMag *= Math.pow(0.04, dt);
+    } else {
+      this.shakeMag = 0; this.shakeX = 0; this.shakeY = 0;
+    }
+
+    if (this.flashAlpha > 0) {
+      this.flashAlpha = Math.max(0, this.flashAlpha - dt * 2.8);
+    }
+
+    for (let i = this.sparks.length - 1; i >= 0; i--) {
+      const s = this.sparks[i];
+      s.x += s.vx * dt;
+      s.y += s.vy * dt;
+      s.vy += 680 * dt;
+      s.life -= dt;
+      if (s.life <= 0) this.sparks.splice(i, 1);
+    }
+
+    for (let i = this.dusts.length - 1; i >= 0; i--) {
+      const d = this.dusts[i];
+      d.x += d.vx * dt;
+      d.y += d.vy * dt;
+      d.r += 24 * dt;
+      d.life -= dt;
+      if (d.life <= 0) this.dusts.splice(i, 1);
+    }
+
+    for (let i = this.rings.length - 1; i >= 0; i--) {
+      const r = this.rings[i];
+      r.life -= dt;
+      r.r = lerp(r.maxR, 10, Math.max(0, r.life / r.maxLife));
+      if (r.life <= 0) this.rings.splice(i, 1);
+    }
+
+    for (let i = this.popups.length - 1; i >= 0; i--) {
+      const p = this.popups[i];
+      p.y += p.vy * dt;
+      p.vy *= 0.94;
+      p.life -= dt;
+      if (p.life <= 0) this.popups.splice(i, 1);
+    }
+  },
+
+  drawWorld(ctx) {
+    // Dust clouds
+    for (const d of this.dusts) {
+      ctx.save();
+      ctx.globalAlpha = (d.life / d.maxLife) * 0.36;
+      ctx.fillStyle = "#cbd5e1";
+      ctx.beginPath();
+      ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Expanding shockwave / parry rings
+    for (const r of this.rings) {
+      ctx.save();
+      ctx.strokeStyle = r.color;
+      ctx.globalAlpha = Math.max(0, r.life / r.maxLife);
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Directional hit sparks
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    for (const s of this.sparks) {
+      const a = Math.max(0, s.life / s.maxLife);
+      const ang = Math.atan2(s.vy, s.vx);
+      ctx.strokeStyle = s.color;
+      ctx.globalAlpha = a;
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y);
+      ctx.lineTo(s.x - Math.cos(ang) * s.len, s.y - Math.sin(ang) * s.len);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Floating damage & status numbers
+    for (const p of this.popups) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, (p.life / p.maxLife) * 1.5);
+      ctx.font = `900 ${Math.round(20 * p.scale)}px "Segoe UI", sans-serif`;
+      ctx.textAlign = "center";
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = "rgba(0,0,0,0.85)";
+      ctx.strokeText(p.text, p.x, p.y);
+      ctx.fillStyle = p.color;
+      ctx.fillText(p.text, p.x, p.y);
+      ctx.restore();
+    }
+  }
+};
+
+/* ============================================================================
+   7. FIGHTER & COMBAT SYSTEM — MOVESETS, LIMB HURTBOXES/HITBOXES & PROJECTILES
+   ============================================================================ */
+function buildMoveset(weaponId) {
+  const w = WEAPONS[weaponId] || WEAPONS.sword;
+  const sm = w.speedMult;
+  const dm = w.dmgMult;
+  const scF = (frames) => Math.max(3, Math.round(frames / sm));
+  const scD = (dmg) => dmg * dm;
+
+  const moves = {
+    // 3-Hit Punch Chain
+    punch_1: {
+      id: "punch_1", startup: 5, active: 4, recovery: 9,
+      damage: 6.5, hitstun: 14, blockstun: 9, kbX: 95, kbY: 0, lungeVx: 130,
+      limb: "lHand", radius: 15, windPose: "punch_wind", hitPose: "punch_1",
+      next: "punch_2", light: true
+    },
+    punch_2: {
+      id: "punch_2", startup: 5, active: 5, recovery: 10,
+      damage: 8.0, hitstun: 16, blockstun: 10, kbX: 130, kbY: 0, lungeVx: 155,
+      limb: "rHand", radius: 16, windPose: "idle_breath", hitPose: "punch_2",
+      next: "punch_3", light: true
+    },
+    punch_3: {
+      id: "punch_3", startup: 7, active: 5, recovery: 15,
+      damage: 11.5, hitstun: 22, blockstun: 13, kbX: 265, kbY: -90, lungeVx: 210,
+      limb: "rHand", radius: 18, windPose: "punch_wind", hitPose: "punch_3",
+      heavy: true
+    },
+
+    // 3-Hit Kick Chain
+    kick_1: {
+      id: "kick_1", startup: 6, active: 5, recovery: 11,
+      damage: 8.5, hitstun: 16, blockstun: 10, kbX: 145, kbY: 0, lungeVx: 140,
+      limb: "rFoot", radius: 17, windPose: "kick_chamber", hitPose: "kick_1",
+      next: "kick_2", light: true
+    },
+    kick_2: {
+      id: "kick_2", startup: 7, active: 5, recovery: 13,
+      damage: 10.5, hitstun: 19, blockstun: 12, kbX: 190, kbY: 0, lungeVx: 170,
+      limb: "rFoot", radius: 18, windPose: "kick_chamber", hitPose: "kick_2",
+      next: "kick_3", light: true
+    },
+    kick_3: {
+      id: "kick_3", startup: 9, active: 6, recovery: 17,
+      damage: 14.5, hitstun: 26, blockstun: 15, kbX: 335, kbY: -275, lungeVx: 225,
+      limb: "rFoot", radius: 20, windPose: "kick_chamber", hitPose: "kick_3",
+      knockdown: true, heavy: true
+    },
+
+    // Crouch & Air Martial Moves
+    crouch_punch: {
+      id: "crouch_punch", startup: 4, active: 4, recovery: 9,
+      damage: 6.0, hitstun: 13, blockstun: 8, kbX: 90, kbY: 0, lungeVx: 95,
+      limb: "rHand", radius: 15, isLow: true, windPose: "crouch", hitPose: "crouch_punch", light: true
+    },
+    crouch_kick: {
+      id: "crouch_kick", startup: 7, active: 6, recovery: 16,
+      damage: 10.5, hitstun: 24, blockstun: 12, kbX: 165, kbY: -255, lungeVx: 195,
+      limb: "rFoot", radius: 19, isLow: true, knockdown: true, windPose: "crouch", hitPose: "crouch_sweep", heavy: true
+    },
+    air_punch: {
+      id: "air_punch", startup: 4, active: 9, recovery: 8,
+      damage: 8.5, hitstun: 16, blockstun: 10, kbX: 140, kbY: 40, lungeVx: 0,
+      limb: "rHand", radius: 17, air: true, windPose: "jump_rise", hitPose: "air_punch", light: true
+    },
+    air_kick: {
+      id: "air_kick", startup: 5, active: 11, recovery: 9,
+      damage: 12.5, hitstun: 21, blockstun: 13, kbX: 245, kbY: 50, lungeVx: 140,
+      limb: "rFoot", radius: 20, air: true, windPose: "jump_rise", hitPose: "air_kick", heavy: true
+    },
+
+    // Ranged Spirit Kunai Throw
+    throw_kunai: {
+      id: "throw_kunai", startup: 7, active: 2, recovery: 13,
+      damage: 0, limb: "none", spawnProj: "kunai",
+      windPose: "throw_wind", hitPose: "throw_rel"
+    },
+
+    // 3-Hit Light Weapon Combo + Heavy + Crouch + Air Slash
+    wep_1: {
+      id: "wep_1", startup: scF(7), active: 5, recovery: scF(11),
+      damage: scD(10.5), hitstun: 17, blockstun: 11, kbX: 150, kbY: 0, lungeVx: 175,
+      limb: "weapon", radius: 16, blade: true, trail: true,
+      windPose: "slash_wind_hi", hitPose: "slash_hit_mid", next: "wep_2"
+    },
+    wep_2: {
+      id: "wep_2", startup: scF(7), active: 5, recovery: scF(12),
+      damage: scD(12.5), hitstun: 19, blockstun: 12, kbX: 185, kbY: 0, lungeVx: 195,
+      limb: "weapon", radius: 16, blade: true, trail: true,
+      windPose: "slash_wind_lo", hitPose: "slash_hit_up", next: "wep_3"
+    },
+    wep_3: {
+      id: "wep_3", startup: scF(9), active: 6, recovery: scF(16),
+      damage: scD(16.0), hitstun: 24, blockstun: 15, kbX: 300, kbY: -120, lungeVx: 245,
+      limb: "weapon", radius: 18, blade: true, trail: true, heavy: true,
+      windPose: "slash_wind_hi", hitPose: "slash_thrust"
+    },
+    wep_heavy: {
+      id: "wep_heavy", startup: scF(15), active: 7, recovery: scF(21),
+      damage: scD(22.5), hitstun: 28, blockstun: 18, kbX: 380, kbY: -300, lungeVx: 285,
+      limb: "weapon", radius: 21, blade: true, trail: true, heavy: true, knockdown: true,
+      windPose: "heavy_wind", hitPose: "heavy_slam"
+    },
+    crouch_wep: {
+      id: "crouch_wep", startup: scF(6), active: 5, recovery: scF(12),
+      damage: scD(11.0), hitstun: 16, blockstun: 10, kbX: 155, kbY: 0, lungeVx: 145,
+      limb: "weapon", radius: 16, isLow: true, blade: true, trail: true,
+      windPose: "crouch", hitPose: "crouch_slash"
+    },
+    air_wep: {
+      id: "air_wep", startup: scF(6), active: 10, recovery: 9,
+      damage: scD(14.5), hitstun: 21, blockstun: 13, kbX: 235, kbY: 60, lungeVx: 0,
+      limb: "weapon", radius: 18, air: true, blade: true, trail: true, heavy: true,
+      windPose: "jump_rise", hitPose: "air_slash"
+    }
+  };
+
+  // 2 Distinct Rage Specials per Weapon
+  if (weaponId === "sword") {
+    moves.spec_1 = {
+      id: "spec_1", name: "Crescent Gale", startup: 7, active: 18, recovery: 14,
+      hitInterval: 6, damage: 9.8, hitstun: 20, blockstun: 12, kbX: 210, kbY: -80, lungeVx: 430,
+      limb: "weapon", radius: 22, blade: true, trail: true, heavy: true, superArmor: true,
+      windPose: "slash_wind_lo", hitPose: "slash_thrust"
+    };
+    moves.spec_2 = {
+      id: "spec_2", name: "Umbra Wave", startup: 10, active: 6, recovery: 16,
+      damage: 16.0, hitstun: 24, blockstun: 14, kbX: 280, kbY: -220, lungeVx: 120,
+      limb: "weapon", radius: 20, blade: true, trail: true, heavy: true, knockdown: true,
+      spawnProj: "umbra_wave", windPose: "heavy_wind", hitPose: "heavy_slam"
+    };
+  } else if (weaponId === "daggers") {
+    moves.spec_1 = {
+      id: "spec_1", name: "Phantom Flurry", startup: 5, active: 16, recovery: 12,
+      hitInterval: 4, damage: 7.6, hitstun: 18, blockstun: 10, kbX: 165, kbY: -50, lungeVx: 390,
+      limb: "weapon", radius: 20, blade: true, trail: true, heavy: true,
+      windPose: "slash_wind_lo", hitPose: "spec_spin"
+    };
+    moves.spec_2 = {
+      id: "spec_2", name: "Viper Blink", startup: 9, active: 6, recovery: 14,
+      damage: 25.0, hitstun: 28, blockstun: 16, kbX: 310, kbY: -260, lungeVx: 190,
+      limb: "weapon", radius: 22, blade: true, trail: true, heavy: true, knockdown: true,
+      blinkBehind: true, windPose: "crouch", hitPose: "slash_thrust"
+    };
+  } else if (weaponId === "staff") {
+    moves.spec_1 = {
+      id: "spec_1", name: "Tempest Wheel", startup: 6, active: 20, recovery: 14,
+      hitInterval: 5, damage: 7.8, hitstun: 19, blockstun: 11, kbX: 195, kbY: -70, lungeVx: 290,
+      limb: "vortex", radius: 82, blade: false, trail: true, heavy: true, deflectProj: true,
+      windPose: "slash_wind_hi", hitPose: "spec_spin"
+    };
+    moves.spec_2 = {
+      id: "spec_2", name: "Sky Vault Slam", startup: 11, active: 9, recovery: 16,
+      damage: 26.5, hitstun: 30, blockstun: 18, kbX: 340, kbY: -310, lungeVx: 340, leapVy: -520,
+      limb: "weapon", radius: 26, blade: false, trail: true, heavy: true, knockdown: true,
+      windPose: "spec_leap", hitPose: "heavy_slam"
+    };
+  } else {
+    // Battle-Axe
+    moves.spec_1 = {
+      id: "spec_1", name: "Earthshaker", startup: 13, active: 7, recovery: 18,
+      damage: 21.0, hitstun: 28, blockstun: 18, kbX: 320, kbY: -290, lungeVx: 140,
+      limb: "weapon", radius: 24, blade: true, trail: true, heavy: true, knockdown: true, superArmor: true,
+      spawnProj: "earth_spikes", windPose: "heavy_wind", hitPose: "heavy_slam"
+    };
+    moves.spec_2 = {
+      id: "spec_2", name: "Berserker Whirl", startup: 9, active: 14, recovery: 16,
+      hitInterval: 7, damage: 15.5, hitstun: 26, blockstun: 16, kbX: 350, kbY: -220, lungeVx: 350,
+      limb: "vortex", radius: 86, blade: true, trail: true, heavy: true, knockdown: true, superArmor: true,
+      windPose: "slash_wind_lo", hitPose: "spec_spin"
+    };
+  }
+
+  // Boss-Only Extra Eclipse Techniques (Lord Malakor)
+  moves.boss_blink_slam = {
+    id: "boss_blink_slam", name: "Abyssal Drop", startup: 12, active: 8, recovery: 17,
+    damage: 23.0, hitstun: 28, blockstun: 16, kbX: 340, kbY: -290, lungeVx: 120, leapVy: -420,
+    limb: "vortex", radius: 85, blade: true, trail: true, heavy: true, knockdown: true,
+    blinkBehind: true, windPose: "spec_leap", hitPose: "heavy_slam"
+  };
+  moves.boss_twin_wave = {
+    id: "boss_twin_wave", name: "Twin Eclipse", startup: 12, active: 6, recovery: 18,
+    damage: 16.0, hitstun: 22, blockstun: 14, kbX: 260, kbY: -180, lungeVx: 60,
+    limb: "weapon", radius: 20, blade: true, trail: true, heavy: true,
+    spawnProj: "boss_waves", windPose: "heavy_wind", hitPose: "slash_hit_mid"
+  };
+
+  return moves;
+}
+
+/* Shortest distance squared between two 2D line segments AB and CD */
+function distSegToSegSq(ax, ay, bx, by, cx, cy, dx, dy) {
+  const ux = bx - ax, uy = by - ay;
+  const vx = dx - cx, vy = dy - cy;
+  const wx = ax - cx, wy = ay - cy;
+  const a = ux * ux + uy * uy;
+  const b = ux * vx + uy * vy;
+  const c = vx * vx + vy * vy;
+  const d = ux * wx + uy * wy;
+  const e = vx * wx + vy * wy;
+  const D = a * c - b * b;
+  let sc, sN, sD = D;
+  let tc, tN, tD = D;
+
+  if (D < 1e-6) {
+    sN = 0.0; sD = 1.0;
+    tN = e;   tD = c;
+  } else {
+    sN = (b * e - c * d);
+    tN = (a * e - b * d);
+    if (sN < 0.0) { sN = 0.0; tN = e; tD = c; }
+    else if (sN > sD) { sN = sD; tN = e + b; tD = c; }
+  }
+
+  if (tN < 0.0) {
+    tN = 0.0;
+    if (-d < 0.0) sN = 0.0;
+    else if (-d > a) sN = sD;
+    else { sN = -d; sD = a; }
+  } else if (tN > tD) {
+    tN = tD;
+    if ((-d + b) < 0.0) sN = 0;
+    else if ((-d + b) > a) sN = sD;
+    else { sN = (-d + b); sD = a; }
+  }
+
+  sc = Math.abs(sN) < 1e-6 ? 0.0 : sN / sD;
+  tc = Math.abs(tN) < 1e-6 ? 0.0 : tN / tD;
+
+  const px = ax + sc * ux;
+  const py = ay + sc * uy;
+  const qx = cx + tc * vx;
+  const qy = cy + tc * vy;
+  const rx = px - qx;
+  const ry = py - qy;
+  return { distSq: rx * rx + ry * ry, mx: (px + qx) * 0.5, my: (py + qy) * 0.5 };
+}
+
+class Fighter {
+  constructor(opts) {
+    this.isPlayer = !!opts.isPlayer;
+    this.name = opts.name || "Warrior";
+    this.weaponId = opts.weaponId || "sword";
+    this.armorId = opts.armorId || "wraps";
+    this.accentHex = opts.accentHex || "#ff3366";
+    this.isBoss = !!opts.isBoss;
+    this.maxHp = Math.round(opts.maxHp || CONFIG.PLAYER_BASE_HP);
+    this.dmgScale = opts.dmgScale || 1.0;
+    this.defReduction = opts.defReduction || 0.0;
+    this.moves = buildMoveset(this.weaponId);
+
+    this.spawnX = opts.x || 380;
+    this.defaultFacing = opts.facing || 1;
+    this.resetForRound();
+  }
+
+  resetForRound() {
+    this.x = this.spawnX;
+    this.y = CONFIG.GROUND_Y;
+    this.vx = 0;
+    this.vy = 0;
+    this.facing = this.defaultFacing;
+
+    this.hp = this.maxHp;
+    this.displayHp = this.maxHp;
+    this.rage = 0;
+
+    this.ammo = CONFIG.RANGED_MAX_AMMO;
+    this.ammoTimer = 0;
+
+    this.state = "idle"; // idle, walk, jump, crouch, block, dodge, attack, hit, knockdown, getup, victory, death
+    this.stateFrames = 0;
+    this.animTime = 0;
+
+    this.currentMove = null;
+    this.moveFrame = 0;
+    this.moveHitCount = 0;
+    this.lastHitFrame = -999;
+    this.bufferedMoveId = null;
+    this.bufferTimer = 0;
+
+    this.blockHoldFrames = 0;
+    this.parryWindow = 0;
+    this.parryFlashFrames = 0;
+    this.dodgeDir = 1;
+    this.dodgeCooldown = 0;
+    this.invulnFrames = 0;
+    this.stunFrames = 0;
+    this.kdFrames = 0;
+    this.flashFrames = 0;
+
+    this.trail = [];
+    this.afterimages = [];
+    this.comboCounter = 0;
+    this.maxCombo = 0;
+    this.damageDealtTotal = 0;
+    this.parriesLanded = 0;
+
+    this.currentPose = POSES["idle_" + this.weaponId] || POSES.idle_sword;
+    this.skeleton = computeSkeleton(this, this.currentPose);
+  }
+
+  isGrounded() {
+    return this.y >= CONFIG.GROUND_Y - 0.5;
+  }
+
+  canAct() {
+    return ["idle", "walk", "crouch", "block", "jump"].includes(this.state);
+  }
+
+  isBlocking() {
+    return this.state === "block" || (this.state === "crouch" && this.wantBlock);
+  }
+
+  startMove(moveId, spendRage = 0) {
+    const m = this.moves[moveId];
+    if (!m) return false;
+    if (spendRage > 0) {
+      if (this.rage < spendRage) return false;
+      this.rage = Math.max(0, this.rage - spendRage);
+      AudioEngine.playSpecial();
+      FX.spawnRing(this.x, this.y - 55, this.accentHex, 95);
+    }
+
+    this.state = "attack";
+    this.currentMove = m;
+    this.moveFrame = 0;
+    this.moveHitCount = 0;
+    this.lastHitFrame = -999;
+    this.bufferedMoveId = null;
+    this.bufferTimer = 0;
+    this.parryWindow = 0;
+
+    if (m.blinkBehind) {
+      this.invulnFrames = Math.max(this.invulnFrames, m.startup + 2);
+    }
+    if (m.leapVy && this.isGrounded()) {
+      this.vy = m.leapVy;
+      this.vx = (m.lungeVx || 260) * this.facing;
+      FX.spawnDust(this.x, CONFIG.GROUND_Y, 8);
+    }
+    return true;
+  }
+
+  startDodge(dir) {
+    if (this.dodgeCooldown > 0 || !this.isGrounded()) return false;
+    this.state = "dodge";
+    this.stateFrames = 0;
+    this.dodgeDir = dir !== 0 ? dir : this.facing;
+    this.vx = this.dodgeDir * CONFIG.DODGE_SPEED;
+    this.invulnFrames = CONFIG.DODGE_INVULN_FRAMES;
+    this.dodgeCooldown = CONFIG.DODGE_FRAMES + CONFIG.DODGE_COOLDOWN_FRAMES;
+    this.currentMove = null;
+    AudioEngine.playWhoosh(0.25);
+    FX.spawnDust(this.x, CONFIG.GROUND_Y, 6);
+    return true;
+  }
+
+  gainRage(amount) {
+    this.rage = Math.min(CONFIG.RAGE_MAX, this.rage + amount);
+  }
+
+  getHurtboxes() {
+    const sk = this.skeleton;
+    return [
+      { ax: sk.neck.x, ay: sk.neck.y, bx: sk.head.x, by: sk.head.y, r: 14 },
+      { ax: sk.hip.x,  ay: sk.hip.y,  bx: sk.shoulder.x, by: sk.shoulder.y, r: 17 },
+      { ax: sk.hip.x,  ay: sk.hip.y,  bx: sk.rFoot.x, by: sk.rFoot.y, r: 11 },
+      { ax: sk.hip.x,  ay: sk.hip.y,  bx: sk.lFoot.x, by: sk.lFoot.y, r: 11 },
+      { ax: sk.rShoulder.x, ay: sk.rShoulder.y, bx: sk.rHand.x, by: sk.rHand.y, r: 9 }
+    ];
+  }
+
+  getActiveHitSegments() {
+    const m = this.currentMove;
+    if (!m || this.state !== "attack") return [];
+    if (this.moveFrame < m.startup || this.moveFrame >= m.startup + m.active) return [];
+
+    // Multi-hit vs single-hit check
+    if (m.hitInterval) {
+      if (this.moveFrame - this.lastHitFrame < m.hitInterval) return [];
+    } else if (this.moveHitCount >= 1) {
+      return [];
+    }
+
+    const sk = this.skeleton;
+    const r = m.radius || 16;
+    if (m.limb === "lHand") {
+      return [{ ax: sk.lElbow.x, ay: sk.lElbow.y, bx: sk.lHand.x, by: sk.lHand.y, r }];
+    }
+    if (m.limb === "rHand") {
+      return [{ ax: sk.rElbow.x, ay: sk.rElbow.y, bx: sk.rHand.x, by: sk.rHand.y, r }];
+    }
+    if (m.limb === "rFoot") {
+      return [{ ax: sk.rKnee.x, ay: sk.rKnee.y, bx: sk.rFoot.x, by: sk.rFoot.y, r }];
+    }
+    if (m.limb === "vortex") {
+      return [{ ax: sk.chest.x - 45, ay: sk.chest.y, bx: sk.chest.x + 45, by: sk.chest.y, r }];
+    }
+    if (m.limb === "weapon") {
+      const segs = [{ ax: sk.rHand.x, ay: sk.rHand.y, bx: sk.wepTip.x, by: sk.wepTip.y, r }];
+      if (sk.wep2Tip) {
+        segs.push({ ax: sk.lHand.x, ay: sk.lHand.y, bx: sk.wep2Tip.x, by: sk.wep2Tip.y, r });
+      }
+      return segs;
+    }
+    return [];
+  }
+
+  update(dt, opponent, allowControl) {
+    this.animTime += dt;
+    this.displayHp = lerp(this.displayHp, this.hp, Math.min(1, dt * 10));
+
+    if (this.dodgeCooldown > 0) this.dodgeCooldown--;
+    if (this.invulnFrames > 0) this.invulnFrames--;
+    if (this.parryWindow > 0) this.parryWindow--;
+    if (this.parryFlashFrames > 0) this.parryFlashFrames--;
+    if (this.flashFrames > 0) this.flashFrames--;
+    if (this.bufferTimer > 0) {
+      this.bufferTimer--;
+      if (this.bufferTimer === 0) this.bufferedMoveId = null;
+    }
+
+    // Regenerate Spirit Kunai ammo
+    if (this.ammo < CONFIG.RANGED_MAX_AMMO) {
+      this.ammoTimer += dt;
+      if (this.ammoTimer >= CONFIG.RANGED_RECHARGE_SEC) {
+        this.ammo++;
+        this.ammoTimer = 0;
+      }
+    }
+
+    // Boss Phase 2 passive Rage trickle below 50% HP
+    if (this.isBoss && allowControl && this.hp > 0 && this.hp < this.maxHp * 0.5) {
+      this.gainRage(4.2 * dt);
+    }
+
+    // Decay dodge afterimages
+    for (let i = this.afterimages.length - 1; i >= 0; i--) {
+      this.afterimages[i].alpha -= dt * 4.5;
+      if (this.afterimages[i].alpha <= 0) this.afterimages.splice(i, 1);
+    }
+
+    // Auto-face opponent when in neutral states
+    if (opponent && ["idle", "walk", "crouch", "block"].includes(this.state)) {
+      if (Math.abs(opponent.x - this.x) > 8) {
+        this.facing = opponent.x >= this.x ? 1 : -1;
+      }
+    }
+
+    // State Machine Progression
+    if (this.state === "victory" || this.state === "death") {
+      this.stateFrames++;
+      this.vx *= CONFIG.FRICTION_GROUND;
+    } else if (this.state === "knockdown") {
+      this.stateFrames++;
+      if (this.isGrounded()) {
+        this.vx *= 0.80;
+        this.kdFrames++;
+        if (this.kdFrames === 1) {
+          AudioEngine.playGroundThud();
+          FX.spawnDust(this.x, CONFIG.GROUND_Y, 10);
+          FX.addShake(6);
+        }
+        if (this.kdFrames >= 26) {
+          if (this.hp <= 0) {
+            this.state = "death";
+            this.stateFrames = 0;
+          } else {
+            this.state = "getup";
+            this.stateFrames = 0;
+            this.invulnFrames = CONFIG.WAKEUP_INVULN_FRAMES;
+          }
+        }
+      }
+    } else if (this.state === "getup") {
+      this.stateFrames++;
+      this.vx *= 0.82;
+      if (this.stateFrames >= 16) {
+        this.state = "idle";
+        this.stateFrames = 0;
+      }
+    } else if (this.state === "hit") {
+      this.stateFrames++;
+      this.stunFrames--;
+      if (this.isGrounded()) this.vx *= 0.82;
+      if (this.stunFrames <= 0) {
+        this.state = this.isGrounded() ? "idle" : "jump";
+        this.stateFrames = 0;
+      }
+    } else if (this.state === "dodge") {
+      this.stateFrames++;
+      this.vx = this.dodgeDir * CONFIG.DODGE_SPEED * (1 - (this.stateFrames / CONFIG.DODGE_FRAMES) * 0.35);
+      if (this.stateFrames % 3 === 0 && this.skeleton) {
+        this.afterimages.push({ sk: JSON.parse(JSON.stringify(this.skeleton)), alpha: 0.9 });
+      }
+      if (this.stateFrames >= CONFIG.DODGE_FRAMES) {
+        this.state = "idle";
+        this.vx *= 0.3;
+      }
+    } else if (this.state === "attack") {
+      const m = this.currentMove;
+      this.moveFrame++;
+
+      // Play whoosh and apply forward martial lunge on active frame start
+      if (this.moveFrame === m.startup) {
+        AudioEngine.playWhoosh(m.heavy ? 0.85 : (WEAPONS[this.weaponId].weight || 0.4));
+
+        // Shadow Blink behind opponent (Viper Blink / Boss Abyssal Drop)
+        if (m.blinkBehind && opponent) {
+          if (this.skeleton) {
+            this.afterimages.push({ sk: JSON.parse(JSON.stringify(this.skeleton)), alpha: 1.0 });
+          }
+          FX.spawnDust(this.x, this.y, 9);
+          const targetX = opponent.x + opponent.facing * -68;
+          this.x = Math.max(CONFIG.ARENA_LEFT + 20, Math.min(CONFIG.ARENA_RIGHT - 20, targetX));
+          this.facing = opponent.x >= this.x ? 1 : -1;
+          FX.spawnRing(this.x, this.y - 50, this.accentHex, 70);
+        }
+
+        if (m.lungeVx && !m.leapVy) {
+          this.vx = m.lungeVx * this.facing;
+        }
+
+        if (m.spawnProj) {
+          Game.spawnMoveProjectiles(this, m.spawnProj);
+        }
+      }
+
+      if (this.isGrounded() && !m.leapVy && this.moveFrame > m.startup + 3) {
+        this.vx *= 0.80;
+      }
+
+      // Combo cancel window right after active frames
+      const cancelStart = m.startup + m.active - 1;
+      if (this.bufferedMoveId && this.moveFrame >= cancelStart) {
+        const nextId = this.bufferedMoveId;
+        this.bufferedMoveId = null;
+        this.startMove(nextId, 0);
+      } else if (this.moveFrame >= m.startup + m.active + m.recovery) {
+        this.currentMove = null;
+        this.state = this.isGrounded() ? "idle" : "jump";
+        this.stateFrames = 0;
+      }
+    }
+
+    // Apply Player or AI Controls if allowed
+    if (allowControl && this.hp > 0) {
+      if (this.isPlayer) {
+        this.handlePlayerInput(opponent);
+      }
+    } else if (!allowControl && ["walk", "block", "crouch"].includes(this.state)) {
+      this.state = "idle";
+      this.vx *= 0.7;
+    }
+
+    // Physics Integration (Gravity & Ground Clamp)
+    const wasAirborne = !this.isGrounded();
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+
+    if (this.y < CONFIG.GROUND_Y) {
+      this.vy += CONFIG.GRAVITY * dt;
+    }
+
+    if (this.y >= CONFIG.GROUND_Y) {
+      this.y = CONFIG.GROUND_Y;
+      if (wasAirborne && this.vy > 140) {
+        FX.spawnDust(this.x, CONFIG.GROUND_Y, 6);
+        if (this.currentMove && this.currentMove.id === "spec_2" && this.weaponId === "staff") {
+          FX.spawnRing(this.x, CONFIG.GROUND_Y - 12, this.accentHex, 115);
+          FX.addShake(8);
+          AudioEngine.playGroundThud();
+        }
+      }
+      this.vy = 0;
+      if (this.state === "jump") {
+        this.state = "idle";
+      }
+      if (this.state === "attack" && this.currentMove && this.currentMove.air) {
+        // Landing cancels air attack cleanly into brief recovery
+        this.currentMove = null;
+        this.state = "idle";
+      }
+    }
+
+    // Clamp to Arena Boundaries
+    this.x = Math.max(CONFIG.ARENA_LEFT, Math.min(CONFIG.ARENA_RIGHT, this.x));
+
+    // Update Pose & Forward Kinematics Skeleton
+    this.updatePose(dt);
+    this.skeleton = computeSkeleton(this, this.currentPose);
+
+    // Record Weapon Ribbon Trail during active slashes
+    if (this.state === "attack" && this.currentMove && this.currentMove.trail &&
+        this.moveFrame >= Math.max(1, this.currentMove.startup - 2) &&
+        this.moveFrame <= this.currentMove.startup + this.currentMove.active + 2) {
+      this.trail.push({
+        bx: this.skeleton.rHand.x,
+        by: this.skeleton.rHand.y,
+        tx: this.skeleton.wepTip.x,
+        ty: this.skeleton.wepTip.y
+      });
+      if (this.trail.length > 8) this.trail.shift();
+    } else if (this.trail.length > 0) {
+      this.trail.shift();
+    }
+  }
+
+  handlePlayerInput(opponent) {
+    const left = Input.leftHeld();
+    const right = Input.rightHeld();
+    const down = Input.downHeld();
+    const moveDir = (right ? 1 : 0) - (left ? 1 : 0);
+    const holdingBack = moveDir !== 0 && moveDir === -this.facing;
+
+    // Weapon hold-to-heavy tracker
+    if (Input.weaponHeld()) {
+      Input.weaponHoldFrames++;
+    } else {
+      Input.weaponHoldFrames = 0;
+      Input.weaponHeavyFired = false;
+    }
+
+    // Buffer Combo Continuations during an active Attack!
+    if (this.state === "attack" && this.currentMove) {
+      if (Input.punchPressed() && this.currentMove.id.startsWith("punch_") && this.currentMove.next) {
+        this.bufferedMoveId = this.currentMove.next;
+        this.bufferTimer = CONFIG.INPUT_BUFFER_FRAMES;
+      } else if (Input.kickPressed() && this.currentMove.id.startsWith("kick_") && this.currentMove.next) {
+        this.bufferedMoveId = this.currentMove.next;
+        this.bufferTimer = CONFIG.INPUT_BUFFER_FRAMES;
+      } else if (Input.weaponPressed() && this.currentMove.id.startsWith("wep_") && this.currentMove.next) {
+        this.bufferedMoveId = this.currentMove.next;
+        this.bufferTimer = CONFIG.INPUT_BUFFER_FRAMES;
+      }
+      return;
+    }
+
+    if (!this.canAct()) return;
+
+    // 1. Dodge-Roll (Double-tap A/D or Shift/Roll button)
+    if (Input.dashQueued !== 0) {
+      if (this.startDodge(Input.dashQueued)) return;
+    }
+    if (Input.rollPressed()) {
+      const dir = moveDir !== 0 ? moveDir : this.facing;
+      if (this.startDodge(dir)) return;
+    }
+
+    // 2. Special Moves (U / Rage button — 50 Rage)
+    if (Input.specialPressed()) {
+      if (this.rage >= CONFIG.SPECIAL_RAGE_COST) {
+        const specId = (down || holdingBack) ? "spec_2" : "spec_1";
+        if (this.startMove(specId, CONFIG.SPECIAL_RAGE_COST)) return;
+      } else {
+        FX.spawnPopup(this.x, this.y - 115, "NEED 50% RAGE", "#94a3b8", 0.78);
+      }
+    }
+
+    // 3. Ranged Spirit Kunai (O or J+K or Back+J)
+    if (Input.throwPressed() || (holdingBack && Input.punchPressed() && Math.abs((opponent ? opponent.x : 640) - this.x) > 150)) {
+      if (this.isGrounded() && this.ammo > 0) {
+        this.ammo--;
+        this.startMove("throw_kunai", 0);
+        return;
+      }
+    }
+
+    // 4. Airborne Attacks
+    if (!this.isGrounded()) {
+      if (moveDir !== 0) {
+        this.vx += moveDir * CONFIG.AIR_DRIFT_ACCEL * CONFIG.DT;
+        this.vx = Math.max(-340, Math.min(340, this.vx));
+      }
+      if (Input.weaponPressed() || Input.heavyPressed()) { this.startMove("air_wep"); return; }
+      if (Input.kickPressed()) { this.startMove("air_kick"); return; }
+      if (Input.punchPressed()) { this.startMove("air_punch"); return; }
+      return;
+    }
+
+    // 5. Ground Attacks (Heavy, Weapon, Kick, Punch)
+    if (Input.heavyPressed() || (Input.weaponHoldFrames === CONFIG.HEAVY_HOLD_FRAMES && !Input.weaponHeavyFired)) {
+      Input.weaponHeavyFired = true;
+      this.startMove("wep_heavy");
+      return;
+    }
+    if (Input.weaponPressed()) {
+      if (down) this.startMove("crouch_wep");
+      else if (holdingBack) this.startMove("wep_heavy");
+      else this.startMove("wep_1");
+      return;
+    }
+    if (Input.kickPressed()) {
+      if (down) this.startMove("crouch_kick");
+      else this.startMove("kick_1");
+      return;
+    }
+    if (Input.punchPressed()) {
+      if (down) this.startMove("crouch_punch");
+      else this.startMove("punch_1");
+      return;
+    }
+
+    // 6. Block & Perfect Parry Timing
+    if (Input.blockPressed()) {
+      this.parryWindow = CONFIG.PARRY_WINDOW_FRAMES;
+    }
+    this.wantBlock = Input.blockHeld();
+    if (this.wantBlock) {
+      this.vx *= CONFIG.FRICTION_GROUND;
+      this.state = down ? "crouch" : "block";
+      return;
+    }
+
+    // 7. Jump, Crouch & Walk
+    if (Input.upPressed()) {
+      this.vy = CONFIG.JUMP_VELOCITY;
+      this.vx = moveDir * CONFIG.WALK_SPEED_FWD * 0.92;
+      this.state = "jump";
+      FX.spawnDust(this.x, CONFIG.GROUND_Y, 6);
+      AudioEngine.playWhoosh(0.18);
+      return;
+    }
+
+    if (down) {
+      this.state = "crouch";
+      this.vx *= CONFIG.FRICTION_GROUND;
+      return;
+    }
+
+    if (moveDir !== 0) {
+      this.state = "walk";
+      const spd = moveDir === this.facing ? CONFIG.WALK_SPEED_FWD : CONFIG.WALK_SPEED_BACK;
+      this.vx = moveDir * spd;
+    } else {
+      this.state = "idle";
+      this.vx *= CONFIG.FRICTION_GROUND;
+      if (Math.abs(this.vx) < 4) this.vx = 0;
+    }
+  }
+
+  updatePose(dt) {
+    let target = POSES["idle_" + this.weaponId] || POSES.idle_sword;
+    let blendSpeed = 16;
+
+    if (this.state === "idle") {
+      const breath = (Math.sin(this.animTime * 3.6) + 1) * 0.5;
+      const baseIdle = POSES["idle_" + this.weaponId] || POSES.idle_sword;
+      target = interpolatePoses(baseIdle, POSES.idle_breath, breath * 0.45);
+      blendSpeed = 12;
+    } else if (this.state === "walk") {
+      const dirSign = (this.vx * this.facing) >= 0 ? 1 : -1;
+      const cycle = ((this.animTime * 7.2 * dirSign) % 4 + 4) % 4;
+      const idx = Math.floor(cycle);
+      const frac = cycle - idx;
+      const seq = [POSES.walk_1, POSES.walk_2, POSES.walk_3, POSES.walk_4];
+      target = interpolatePoses(seq[idx], seq[(idx + 1) % 4], frac);
+      blendSpeed = 20;
+    } else if (this.state === "jump") {
+      target = this.vy < 40 ? POSES.jump_rise : POSES.jump_fall;
+      blendSpeed = 14;
+    } else if (this.state === "crouch") {
+      target = POSES.crouch;
+      blendSpeed = 20;
+    } else if (this.state === "block") {
+      target = this.parryFlashFrames > 0 ? POSES.parry : POSES.block;
+      blendSpeed = 24;
+    } else if (this.state === "dodge") {
+      const p = this.stateFrames / CONFIG.DODGE_FRAMES;
+      if (p < 0.35) target = POSES.dodge_1;
+      else if (p < 0.72) target = POSES.dodge_2;
+      else target = POSES.dodge_3;
+      blendSpeed = 26;
+    } else if (this.state === "hit") {
+      target = this.stunFrames > 14 ? POSES.hit_heavy : POSES.hit_light;
+      blendSpeed = 28;
+    } else if (this.state === "knockdown") {
+      target = this.isGrounded() ? POSES.kd_ground : POSES.kd_air;
+      blendSpeed = 18;
+    } else if (this.state === "getup") {
+      target = this.stateFrames < 8 ? POSES.getup_1 : POSES.getup_2;
+      blendSpeed = 18;
+    } else if (this.state === "victory") {
+      target = this.stateFrames < 38 ? POSES.victory_1 : POSES.victory_2;
+      blendSpeed = 10;
+    } else if (this.state === "death") {
+      target = POSES.death;
+      blendSpeed = 14;
+    } else if (this.state === "attack" && this.currentMove) {
+      const m = this.currentMove;
+      const wind = POSES[m.windPose] || POSES.slash_wind_hi;
+      const hit = POSES[m.hitPose] || POSES.slash_hit_mid;
+      const idle = POSES["idle_" + this.weaponId] || POSES.idle_sword;
+
+      if (this.moveFrame < m.startup) {
+        target = interpolatePoses(this.currentPose, wind, easeOutCubic(this.moveFrame / Math.max(1, m.startup)));
+        blendSpeed = 30;
+      } else if (this.moveFrame < m.startup + m.active) {
+        if (m.hitPose === "spec_spin") {
+          // Alternating spin pose for multi-hit vortex attacks
+          const flip = Math.floor(this.moveFrame / 3) % 2 === 0;
+          target = flip ? POSES.spec_spin : POSES.slash_thrust;
+        } else {
+          target = hit;
+        }
+        blendSpeed = 38;
+      } else {
+        const recT = (this.moveFrame - m.startup - m.active) / Math.max(1, m.recovery);
+        target = interpolatePoses(hit, idle, recT);
+        blendSpeed = 18;
+      }
+    }
+
+    this.currentPose = interpolatePoses(this.currentPose, target, Math.min(1, dt * blendSpeed));
+  }
+}
+
+/* ============================================================================
+   8. ENEMY AI — REACTION-DELAYED TACTICAL STATE MACHINE & BOSS LOGIC
+   ============================================================================ */
+class AIController {
+  constructor(fighter, profile) {
+    this.f = fighter;
+    this.base = Object.assign({
+      aggression: 0.5,
+      reaction: 16,
+      blockChance: 0.35,
+      parryChance: 0.08,
+      comboChance: 0.55,
+      specialChance: 0.5
+    }, profile || {});
+
+    this.history = [];
+    this.state = "APPROACH";
+    this.timer = 0;
+    this.blockTimer = 0;
+    this.thinkCooldown = 0;
+  }
+
+  reset() {
+    this.history = [];
+    this.state = "APPROACH";
+    this.timer = 0;
+    this.blockTimer = 0;
+    this.thinkCooldown = 12;
+  }
+
+  update(player, projectiles) {
+    const f = this.f;
+    if (f.hp <= 0) return;
+
+    const scale = CONFIG.AI_DIFFICULTY_SCALE;
+    const aggr = Math.min(0.96, this.base.aggression * scale);
+    const blockCh = Math.min(0.90, this.base.blockChance * scale);
+    const parryCh = Math.min(0.45, this.base.parryChance * scale);
+    const comboCh = Math.min(0.95, this.base.comboChance * scale);
+    const reactionFrames = Math.max(4, Math.round(this.base.reaction / scale));
+
+    // Record world observation for realistic human-like reaction delay
+    const incomingProj = projectiles.some((p) =>
+      p.owner !== f && Math.sign(p.vx) === Math.sign(f.x - p.x) && Math.abs(p.x - f.x) < 230
+    );
+    this.history.push({
+      playerAtk: player.state === "attack" && player.currentMove &&
+                 player.moveFrame < player.currentMove.startup + player.currentMove.active,
+      playerWhiff: player.state === "attack" && player.currentMove &&
+                   player.moveFrame >= player.currentMove.startup + player.currentMove.active,
+      projThreat: incomingProj
+    });
+    if (this.history.length > 40) this.history.shift();
+    const obs = this.history[Math.max(0, this.history.length - 1 - reactionFrames)] || this.history[0];
+
+    const dist = Math.abs(player.x - f.x);
+    const dirToPlayer = player.x >= f.x ? 1 : -1;
+    const idealRange = WEAPONS[f.weaponId].reach + 22;
+
+    // Chain combos if currently in an attack
+    if (f.state === "attack" && f.currentMove) {
+      if (f.currentMove.next && !f.bufferedMoveId &&
+          f.moveFrame === f.currentMove.startup + f.currentMove.active - 1) {
+        if (dist < idealRange + 35 && Math.random() < comboCh) {
+          f.bufferedMoveId = f.currentMove.next;
+          f.bufferTimer = 10;
+        }
+      }
+      return;
+    }
+
+    if (!f.canAct()) return;
+
+    // Active block hold timer
+    if (this.blockTimer > 0) {
+      this.blockTimer--;
+      f.wantBlock = true;
+      f.state = "block";
+      f.vx *= CONFIG.FRICTION_GROUND;
+      return;
+    }
+    f.wantBlock = false;
+
+    if (this.thinkCooldown > 0) this.thinkCooldown--;
+
+    // 1. Defensive Reaction to Incoming Melee or Kunai
+    if ((obs.playerAtk && dist < 175) || obs.projThreat) {
+      if (this.thinkCooldown === 0) {
+        this.thinkCooldown = 14;
+        const roll = Math.random();
+        if (roll < parryCh) {
+          f.parryWindow = CONFIG.PARRY_WINDOW_FRAMES;
+          this.blockTimer = 10;
+          f.state = "block";
+          return;
+        } else if (roll < parryCh + blockCh) {
+          this.blockTimer = 16 + Math.floor(Math.random() * 14);
+          f.state = "block";
+          return;
+        } else if (roll < parryCh + blockCh + 0.18 && f.isGrounded()) {
+          if (f.startDodge(-dirToPlayer)) return;
+        }
+      }
+    }
+
+    // 2. Punish Whiffed Player Moves!
+    if (obs.playerWhiff && dist < idealRange + 45) {
+      if (f.rage >= CONFIG.SPECIAL_RAGE_COST && Math.random() < this.base.specialChance) {
+        const s = f.isBoss && Math.random() < 0.45 ? "boss_blink_slam" : "spec_1";
+        f.startMove(s, CONFIG.SPECIAL_RAGE_COST);
+        return;
+      }
+      f.startMove(dist < 85 ? "punch_1" : "wep_1");
+      return;
+    }
+
+    // 3. Boss & Rage Special Unleashing
+    if (f.rage >= CONFIG.SPECIAL_RAGE_COST && this.thinkCooldown === 0 && Math.random() < this.base.specialChance * 0.08) {
+      if (f.isBoss && Math.random() < 0.55) {
+        const bossMove = dist > 190 ? "boss_twin_wave" : "boss_blink_slam";
+        if (f.startMove(bossMove, CONFIG.SPECIAL_RAGE_COST)) {
+          this.thinkCooldown = 25;
+          return;
+        }
+      } else if (dist < 230) {
+        const spec = Math.random() < 0.52 ? "spec_1" : "spec_2";
+        if (f.startMove(spec, CONFIG.SPECIAL_RAGE_COST)) {
+          this.thinkCooldown = 25;
+          return;
+        }
+      }
+    }
+
+    // 4. Offensive Decisions when in Striking Range
+    if (dist <= idealRange + 16 && this.thinkCooldown === 0) {
+      if (Math.random() < aggr) {
+        this.thinkCooldown = Math.round(14 / Math.max(0.6, scale));
+        const r = Math.random();
+        if (player.isBlocking() && r < 0.38) {
+          // Mix up with low sweep or heavy cleave against turtles
+          f.startMove(Math.random() < 0.6 ? "crouch_kick" : "wep_heavy");
+        } else if (dist < 72 && r < 0.36) {
+          f.startMove(Math.random() < 0.55 ? "punch_1" : "kick_1");
+        } else if (r < 0.80) {
+          f.startMove("wep_1");
+        } else if (r < 0.92) {
+          f.startMove("wep_heavy");
+        } else {
+          f.startMove("crouch_kick");
+        }
+        return;
+      } else {
+        // Brief micro-spacing retreat
+        this.state = "RETREAT";
+        this.timer = 14 + Math.floor(Math.random() * 14);
+        this.thinkCooldown = 16;
+      }
+    }
+
+    // 5. Long-Range Ranged Kunai / Jump-In / Approach
+    if (dist > 250 && f.ammo > 0 && f.isGrounded() && Math.random() < 0.018 * scale) {
+      f.ammo--;
+      f.startMove("throw_kunai");
+      this.thinkCooldown = 28;
+      return;
+    }
+
+    if (this.timer > 0) {
+      this.timer--;
+    } else {
+      if (dist > idealRange + 10) this.state = "APPROACH";
+      else if (dist < idealRange * 0.58 && !WEAPONS[f.weaponId].dual) this.state = "RETREAT";
+      else this.state = Math.random() < aggr ? "APPROACH" : "SPACE";
+      this.timer = 15 + Math.floor(Math.random() * 20);
+    }
+
+    // Execute Footwork State
+    if (this.state === "APPROACH") {
+      if (dist > 220 && f.isGrounded() && Math.random() < 0.015 * aggr) {
+        f.startDodge(dirToPlayer);
+        return;
+      }
+      if (dist > 150 && dist < 240 && f.isGrounded() && Math.random() < 0.012 * aggr) {
+        f.vy = CONFIG.JUMP_VELOCITY;
+        f.vx = dirToPlayer * CONFIG.WALK_SPEED_FWD;
+        f.state = "jump";
+        return;
+      }
+      f.state = "walk";
+      f.vx = dirToPlayer * CONFIG.WALK_SPEED_FWD * 0.94;
+    } else if (this.state === "RETREAT") {
+      f.state = "walk";
+      f.vx = -dirToPlayer * CONFIG.WALK_SPEED_BACK;
+    } else {
+      f.state = "idle";
+      f.vx *= CONFIG.FRICTION_GROUND;
+    }
+
+    // Occasional aerial kick if jumping toward player
+    if (!f.isGrounded() && dist < 135 && f.vy > -180 && Math.random() < 0.16) {
+      f.startMove(Math.random() < 0.5 ? "air_kick" : "air_wep");
+    }
+  }
+}
+
+/* ============================================================================
+   9. GAME CONTROLLER, COMBAT RESOLUTION, HUD, MENUS & 60 FPS MAIN LOOP
+   ============================================================================ */
+const Game = {
+  canvas: null,
+  ctx: null,
+  armoryCanvas: null,
+  armoryCtx: null,
+  armoryDummy: null,
+
+  mode: "menu",        // "menu", "fight", "paused", "result"
+  matchType: "campaign", // "campaign" or "quick"
+  currentStageIdx: 0,
+  arenaId: "temple",
+  eclipseMode: false,
+
+  player: null,
+  enemy: null,
+  ai: null,
+  projectiles: [],
+
+  roundNum: 1,
+  pWins: 0,
+  eWins: 0,
+  roundTimer: CONFIG.ROUND_TIME_SEC,
+  phase: "intro",      // "intro", "active", "ko", "over"
+  phaseTimer: 0,
+  bannerText: "",
+  bannerSub: "",
+
+  hitstopFrames: 0,
+  slowmoTimer: 0,
+  timeScale: 1.0,
+  camX: 0,
+  camZoom: 1.0,
+  globalTime: 0,
+  settingsReturnTo: "menu",
+
+  init() {
+    this.canvas = document.getElementById("game-canvas");
+    this.ctx = this.canvas.getContext("2d");
+    this.armoryCanvas = document.getElementById("armory-canvas");
+    this.armoryCtx = this.armoryCanvas.getContext("2d");
+
+    this.resize();
+    window.addEventListener("resize", () => this.resize());
+
+    Input.init();
+    UI.init();
+    this.setupMenuShowcase();
+    this.updateTouchVisibility();
+
+    // Start Fixed-Timestep 60 FPS Loop
+    let lastTime = performance.now();
+    let accumulator = 0;
+
+    const frame = (now) => {
+      const rawDt = Math.min(0.1, (now - lastTime) / 1000);
+      lastTime = now;
+      accumulator += rawDt;
+
+      while (accumulator >= CONFIG.DT) {
+        this.fixedUpdate(CONFIG.DT);
+        Input.endFrame();
+        accumulator -= CONFIG.DT;
+      }
+
+      this.render();
+      UI.renderArmoryPreview(this.globalTime);
+      requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  },
+
+  resize() {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    this.canvas.width = Math.max(1, Math.floor(window.innerWidth * dpr));
+    this.canvas.height = Math.max(1, Math.floor(window.innerHeight * dpr));
+  },
+
+  updateTouchVisibility() {
+    const layer = document.getElementById("touch-layer");
+    const mode = SaveData.settings.touchMode;
+    const show = this.mode === "fight" && (mode === "on" || (mode === "auto" && Input.isTouchDevice));
+    layer.classList.toggle("visible", show);
+  },
+
+  getPlayerStats() {
+    const wepId = SaveData.equippedWeapon;
+    const armId = SaveData.equippedArmor;
+    const wLv = SaveData.weaponLevels[wepId] || 1;
+    const aLv = SaveData.armorLevels[armId] || 1;
+    const arm = ARMORS[armId] || ARMORS.wraps;
+    const acc = ACCENTS.find((a) => a.id === SaveData.accentId) || ACCENTS[0];
+
+    const hpMult = 1 + arm.hpBonus + (aLv - 1) * CONFIG.ARMOR_UPGRADE_HP_STEP;
+    const defRed = Math.min(0.42, arm.defBonus + (aLv - 1) * CONFIG.ARMOR_UPGRADE_DEF_STEP);
+    const dmgScale = (1 + (wLv - 1) * CONFIG.WEAPON_UPGRADE_DMG_STEP) * CONFIG.DAMAGE_MULTIPLIER;
+
+    return {
+      weaponId: wepId,
+      armorId: armId,
+      accentHex: acc.hex,
+      maxHp: Math.round(CONFIG.PLAYER_BASE_HP * hpMult),
+      dmgScale,
+      defReduction: defRed
+    };
+  },
+
+  setupMenuShowcase() {
+    const ps = this.getPlayerStats();
+    this.arenaId = "temple";
+    this.eclipseMode = false;
+    this.player = new Fighter({
+      isPlayer: true, name: "Shadow", x: 470, facing: 1, ...ps
+    });
+    this.enemy = new Fighter({
+      isPlayer: false, name: "Takeshi", x: 810, facing: -1,
+      weaponId: "sword", armorId: "gusoku", accentHex: "#fb7185", maxHp: 120
+    });
+    this.projectiles = [];
+    FX.clear();
+  },
+
+  startCampaignMatch(stageIdx) {
+    this.matchType = "campaign";
+    this.currentStageIdx = stageIdx;
+    const stage = CAMPAIGN_FIGHTERS[stageIdx];
+    this.arenaId = stage.arena;
+    this.eclipseMode = !!stage.eclipse;
+
+    const ps = this.getPlayerStats();
+    this.player = new Fighter({
+      isPlayer: true, name: "You", x: 390, facing: 1, ...ps
+    });
+
+    this.enemy = new Fighter({
+      isPlayer: false,
+      name: stage.name,
+      x: 890,
+      facing: -1,
+      weaponId: stage.weapon,
+      armorId: stage.armor,
+      accentHex: stage.accent,
+      isBoss: !!stage.isBoss,
+      maxHp: Math.round(CONFIG.PLAYER_BASE_HP * stage.hpMult),
+      dmgScale: stage.dmgMult * CONFIG.DAMAGE_MULTIPLIER,
+      defReduction: stage.isBoss ? 0.10 : 0.0
+    });
+
+    this.ai = new AIController(this.enemy, stage.ai);
+    this.beginMatch();
+  },
+
+  startQuickMatch(arenaId, diffIdx, weaponChoice) {
+    this.matchType = "quick";
+    this.arenaId = arenaId;
+    this.eclipseMode = diffIdx === 3 && arenaId === "harbour";
+
+    const wepPool = ["sword", "daggers", "staff", "axe"];
+    const eWep = weaponChoice === "random" ? wepPool[Math.floor(Math.random() * wepPool.length)] : weaponChoice;
+    const presets = [
+      { name: "Shadow Initiate", armor: "wraps", accent: "#38bdf8", hp: 0.95, dmg: 0.88, ai: { aggression: 0.36, reaction: 22, blockChance: 0.22, parryChance: 0.03, comboChance: 0.40, specialChance: 0.30 } },
+      { name: "Ronin Duelist",   armor: "ronin", accent: "#34d399", hp: 1.10, dmg: 1.00, ai: { aggression: 0.55, reaction: 15, blockChance: 0.40, parryChance: 0.10, comboChance: 0.62, specialChance: 0.55 } },
+      { name: "Grandmaster Kage",armor: "gusoku",accent: "#f59e0b", hp: 1.28, dmg: 1.12, ai: { aggression: 0.70, reaction: 10, blockChance: 0.56, parryChance: 0.18, comboChance: 0.78, specialChance: 0.72 } },
+      { name: "Lord Malakor",    armor: "sovereign", accent: "#ff1e56", hp: 1.50, dmg: 1.24, boss: true, ai: { aggression: 0.80, reaction: 7, blockChance: 0.66, parryChance: 0.24, comboChance: 0.85, specialChance: 0.85 } }
+    ];
+    const pr = presets[diffIdx] || presets[1];
+
+    const ps = this.getPlayerStats();
+    this.player = new Fighter({
+      isPlayer: true, name: "You", x: 390, facing: 1, ...ps
+    });
+    this.enemy = new Fighter({
+      isPlayer: false, name: pr.name, x: 890, facing: -1,
+      weaponId: eWep, armorId: pr.armor, accentHex: pr.accent,
+      isBoss: !!pr.boss,
+      maxHp: Math.round(CONFIG.PLAYER_BASE_HP * pr.hp),
+      dmgScale: pr.dmg * CONFIG.DAMAGE_MULTIPLIER,
+      defReduction: pr.boss ? 0.08 : 0.0
+    });
+    this.ai = new AIController(this.enemy, pr.ai);
+    this.beginMatch();
+  },
+
+  beginMatch() {
+    this.mode = "fight";
+    this.roundNum = 1;
+    this.pWins = 0;
+    this.eWins = 0;
+    UI.hideAllScreens();
+    document.getElementById("btn-pause").style.display = "inline-block";
+    this.updateTouchVisibility();
+    ArenaRenderer.initParticles(this.arenaId);
+    this.startRound();
+  },
+
+  startRound() {
+    this.player.resetForRound();
+    this.enemy.resetForRound();
+    this.ai.reset();
+    this.projectiles = [];
+    FX.clear();
+
+    this.roundTimer = CONFIG.ROUND_TIME_SEC;
+    this.phase = "intro";
+    this.phaseTimer = 1.65;
+    this.hitstopFrames = 0;
+    this.slowmoTimer = 0;
+    this.timeScale = 1.0;
+
+    const isFinal = (this.pWins === CONFIG.ROUNDS_TO_WIN - 1 && this.eWins === CONFIG.ROUNDS_TO_WIN - 1);
+    this.bannerText = isFinal ? "FINAL ROUND" : `ROUND ${this.roundNum}`;
+    this.bannerSub = this.enemy.isBoss ? "SOVEREIGN OF THE ECLIPSE" : `${this.player.name}  VS  ${this.enemy.name}`;
+    AudioEngine.playGong(false);
+  },
+
+  togglePause() {
+    if (this.mode === "fight") {
+      this.mode = "paused";
+      UI.showScreen("screen-pause");
+      this.updateTouchVisibility();
+    } else if (this.mode === "paused") {
+      this.mode = "fight";
+      UI.hideAllScreens();
+      this.updateTouchVisibility();
+    }
+  },
+
+  spawnMoveProjectiles(owner, type) {
+    const f = owner.facing;
+    const sx = owner.x + f * 44;
+    if (type === "kunai") {
+      this.projectiles.push({
+        owner, type: "kunai",
+        x: sx, y: owner.y - 68,
+        vx: f * CONFIG.RANGED_SPEED, vy: 0,
+        r: 10, damage: CONFIG.RANGED_DAMAGE * owner.dmgScale,
+        kbX: 140, kbY: 0, hitstun: 14, color: owner.accentHex, life: 1.8
+      });
+    } else if (type === "umbra_wave") {
+      this.projectiles.push({
+        owner, type: "wave",
+        x: sx + f * 18, y: CONFIG.GROUND_Y - 52,
+        vx: f * 620, vy: 0,
+        r: 44, damage: 18 * owner.dmgScale,
+        kbX: 280, kbY: -180, hitstun: 22, knockdown: true, color: owner.accentHex, life: 1.6
+      });
+    } else if (type === "earth_spikes") {
+      for (let i = 0; i < 3; i++) {
+        this.projectiles.push({
+          owner, type: "spike",
+          x: owner.x + f * (85 + i * 82),
+          y: CONFIG.GROUND_Y,
+          vx: 0, vy: 0,
+          delay: i * 0.12,
+          r: 34, damage: 15.5 * owner.dmgScale,
+          kbX: 210, kbY: -290, hitstun: 24, knockdown: true, color: owner.accentHex, life: 0.42
+        });
+      }
+      FX.addShake(9);
+      AudioEngine.playGroundThud();
+    } else if (type === "boss_waves") {
+      [0, 0.22].forEach((delay, idx) => {
+        this.projectiles.push({
+          owner, type: "wave",
+          x: sx + f * 15, y: CONFIG.GROUND_Y - (idx === 0 ? 32 : 76),
+          vx: f * 660, vy: 0, delay,
+          r: 36, damage: 14.5 * owner.dmgScale,
+          kbX: 250, kbY: -150, hitstun: 20, knockdown: idx === 1, color: owner.accentHex, life: 1.7
+        });
+      });
+    }
+  },
+
+  fixedUpdate(dt) {
+    this.globalTime += dt;
+
+    if (this.mode === "menu") {
+      ArenaRenderer.updateParticles(dt, this.arenaId);
+      this.player.update(dt, this.enemy, false);
+      this.enemy.update(dt, this.player, false);
+      this.camX = lerp(this.camX, 0, dt * 4);
+      this.camZoom = 1.04;
+      return;
+    }
+
+    if (this.mode !== "fight") return;
+
+    // Slow-motion on round-ending blow
+    if (this.slowmoTimer > 0) {
+      this.slowmoTimer -= dt;
+      this.timeScale = this.slowmoTimer > 0 ? CONFIG.KO_SLOWMO_SCALE : 1.0;
+    } else {
+      this.timeScale = 1.0;
+    }
+
+    const simDt = dt * this.timeScale;
+    ArenaRenderer.updateParticles(simDt, this.arenaId);
+    FX.update(dt);
+
+    // Brief tactile Hitstop freeze
+    if (this.hitstopFrames > 0) {
+      this.hitstopFrames--;
+      return;
+    }
+
+    // Round Phase Machine
+    if (this.phase === "intro") {
+      this.phaseTimer -= dt;
+      if (this.phaseTimer <= 0.55 && this.bannerText !== "FIGHT!") {
+        this.bannerText = "FIGHT!";
+        this.bannerSub = "";
+        AudioEngine.playWhoosh(0.8);
+      }
+      if (this.phaseTimer <= 0) {
+        this.phase = "active";
+        this.bannerText = "";
+      }
+    } else if (this.phase === "active") {
+      this.roundTimer = Math.max(0, this.roundTimer - simDt);
+      if (this.roundTimer <= 0) {
+        this.resolveTimeUp();
+      }
+    } else if (this.phase === "ko") {
+      this.phaseTimer -= dt;
+      if (this.phaseTimer <= 1.95) {
+        const winner = this.player.hp > 0 && this.enemy.hp <= 0 ? this.player :
+                       (this.enemy.hp > 0 && this.player.hp <= 0 ? this.enemy : null);
+        if (winner && winner.state !== "victory" && winner.isGrounded()) {
+          winner.state = "victory";
+          winner.stateFrames = 0;
+        }
+      }
+      if (this.phaseTimer <= 0) {
+        if (this.pWins >= CONFIG.ROUNDS_TO_WIN || this.eWins >= CONFIG.ROUNDS_TO_WIN) {
+          this.finishMatch();
+        } else {
+          this.roundNum++;
+          this.startRound();
+        }
+        return;
+      }
+    }
+
+    const allowControl = (this.phase === "active");
+    if (allowControl) {
+      this.ai.update(this.player, this.projectiles);
+    }
+
+    this.player.update(simDt, this.enemy, allowControl);
+    this.enemy.update(simDt, this.player, allowControl);
+
+    // Pushbox Separation (prevent overlapping unless dodging/invulnerable)
+    this.resolvePushboxes();
+
+    // Melee & Projectile Hit Detection
+    if (this.phase === "active") {
+      this.checkMeleeHits(this.player, this.enemy);
+      this.checkMeleeHits(this.enemy, this.player);
+      this.updateProjectiles(simDt);
+    } else {
+      this.updateProjectiles(simDt, true);
+    }
+
+    // Update Dynamic Camera (midpoint tracking + close-quarters zoom)
+    const midX = (this.player.x + this.enemy.x) * 0.5;
+    const targetCamX = (midX - CONFIG.STAGE_W * 0.5) * 0.42;
+    this.camX = lerp(this.camX, Math.max(-150, Math.min(150, targetCamX)), dt * 6);
+
+    const sep = Math.abs(this.player.x - this.enemy.x);
+    const targetZoom = sep < 280 ? 1.09 : (sep > 560 ? 0.98 : 1.03);
+    this.camZoom = lerp(this.camZoom, targetZoom, dt * 4);
+  },
+
+  resolvePushboxes() {
+    const p = this.player;
+    const e = this.enemy;
+    if (p.state === "dodge" || e.state === "dodge" || p.state === "death" || e.state === "death") return;
+    if (Math.abs(p.y - e.y) > 75) return;
+
+    const minSep = CONFIG.PUSHBOX_RADIUS * 2;
+    const dx = e.x - p.x;
+    const absDx = Math.abs(dx);
+    if (absDx < minSep) {
+      const push = (minSep - absDx) * 0.5;
+      const sign = dx >= 0 ? 1 : -1;
+      p.x = Math.max(CONFIG.ARENA_LEFT, Math.min(CONFIG.ARENA_RIGHT, p.x - sign * push));
+      e.x = Math.max(CONFIG.ARENA_LEFT, Math.min(CONFIG.ARENA_RIGHT, e.x + sign * push));
+    }
+  },
+
+  checkMeleeHits(attacker, defender) {
+    if (defender.hp <= 0 || defender.invulnFrames > 0 || defender.state === "death") return;
+    const hitSegs = attacker.getActiveHitSegments();
+    if (hitSegs.length === 0) return;
+
+    const hurtSegs = defender.getHurtboxes();
+    for (const hs of hitSegs) {
+      for (const hb of hurtSegs) {
+        const res = distSegToSegSq(hs.ax, hs.ay, hs.bx, hs.by, hb.ax, hb.ay, hb.bx, hb.by);
+        const radSum = hs.r + hb.r;
+        if (res.distSq <= radSum * radSum) {
+          attacker.moveHitCount++;
+          attacker.lastHitFrame = attacker.moveFrame;
+          this.applyHit(attacker, defender, attacker.currentMove, res.mx, res.my);
+          return;
+        }
+      }
+    }
+  },
+
+  updateProjectiles(dt, visualOnly = false) {
+    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+      const p = this.projectiles[i];
+      if (p.delay && p.delay > 0) {
+        p.delay -= dt;
+        if (p.delay <= 0 && p.type === "spike") {
+          FX.spawnDust(p.x, CONFIG.GROUND_Y, 7);
+          AudioEngine.playHit(false, true);
+        }
+        continue;
+      }
+
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.life -= dt;
+
+      if (p.life <= 0 || p.x < CONFIG.ARENA_LEFT - 90 || p.x > CONFIG.ARENA_RIGHT + 90) {
+        this.projectiles.splice(i, 1);
+        continue;
+      }
+
+      if (visualOnly) continue;
+
+      const defender = p.owner === this.player ? this.enemy : this.player;
+      if (defender.hp <= 0 || defender.invulnFrames > 0) continue;
+
+      // Tempest Wheel deflects Kunai!
+      if (p.type === "kunai" && defender.state === "attack" &&
+          defender.currentMove && defender.currentMove.deflectProj &&
+          Math.hypot(p.x - defender.x, p.y - (defender.y - 60)) < 90) {
+        p.owner = defender;
+        p.vx = -p.vx * 1.15;
+        p.color = defender.accentHex;
+        AudioEngine.playBlock(true);
+        FX.spawnHitSparks(p.x, p.y, "#ffffff", 12, 0);
+        continue;
+      }
+
+      const hurtSegs = defender.getHurtboxes();
+      let hit = false;
+      for (const hb of hurtSegs) {
+        const res = distSegToSegSq(p.x - 10, p.y, p.x + 10, p.y, hb.ax, hb.ay, hb.bx, hb.by);
+        if (res.distSq <= (p.r + hb.r) * (p.r + hb.r)) {
+          this.applyHit(p.owner, defender, {
+            damage: p.damage / p.owner.dmgScale,
+            kbX: p.kbX, kbY: p.kbY || 0,
+            hitstun: p.hitstun, blockstun: 10,
+            knockdown: !!p.knockdown, blade: true, heavy: p.type !== "kunai"
+          }, res.mx, res.my, p);
+          hit = true;
+          break;
+        }
+      }
+      if (hit) {
+        this.projectiles.splice(i, 1);
+      }
+    }
+  },
+
+  applyHit(attacker, defender, move, hitX, hitY, proj = null) {
+    const dir = attacker.x <= defender.x ? 1 : -1;
+    const rawDmg = move.damage * attacker.dmgScale * (1 - defender.defReduction);
+    const facingAttacker = defender.facing === -dir;
+
+    // 1. Check Perfect Parry!
+    if (defender.parryWindow > 0 && facingAttacker) {
+      defender.parryWindow = 0;
+      defender.parryFlashFrames = 14;
+      defender.parriesLanded++;
+      defender.gainRage(CONFIG.RAGE_GAIN_PARRY);
+
+      AudioEngine.playBlock(true);
+      FX.spawnRing(hitX, hitY, "#00e5ff", 95);
+      FX.spawnHitSparks(hitX, hitY, "#ffffff", 20, -dir);
+      FX.spawnPopup(defender.x, defender.y - 118, "PERFECT PARRY!", "#00e5ff", 1.12);
+      FX.addShake(7);
+      this.hitstopFrames = CONFIG.HITSTOP_HEAVY + 2;
+
+      if (!proj) {
+        attacker.state = "hit";
+        attacker.currentMove = null;
+        attacker.stunFrames = CONFIG.PARRY_STUN_FRAMES;
+        attacker.vx = -dir * 220;
+      }
+      return;
+    }
+
+    // 2. Check Standard Block
+    if (defender.isBlocking() && facingAttacker) {
+      const lowPenalty = (move.isLow && defender.state !== "crouch") ? 0.38 : (move.light ? CONFIG.LIGHT_BLOCK_MULT : CONFIG.BLOCK_DAMAGE_MULT);
+      const chip = Math.max(1, Math.round(rawDmg * lowPenalty));
+      defender.hp = Math.max(1, defender.hp - chip);
+      defender.vx = dir * move.kbX * 0.45;
+      defender.gainRage(chip * 0.9 + 4);
+      attacker.gainRage(3);
+
+      AudioEngine.playBlock(false);
+      FX.spawnHitSparks(hitX, hitY, "#e2e8f0", 11, dir);
+      FX.spawnPopup(defender.x, defender.y - 105, `BLOCK -${chip}`, "#cbd5e1", 0.82);
+      FX.addShake(3.5);
+      this.hitstopFrames = CONFIG.HITSTOP_LIGHT;
+      return;
+    }
+
+    // 3. Clean Hit Connects!
+    const isCounter = defender.state === "attack";
+    const finalDmg = Math.max(1, Math.round(rawDmg * (isCounter ? 1.15 : 1.0)));
+    defender.hp = Math.max(0, defender.hp - finalDmg);
+    defender.flashFrames = 6;
+
+    attacker.comboCounter++;
+    attacker.maxCombo = Math.max(attacker.maxCombo, attacker.comboCounter);
+    attacker.damageDealtTotal += finalDmg;
+    defender.comboCounter = 0;
+
+    attacker.gainRage(finalDmg * CONFIG.RAGE_GAIN_DEAL_MULT);
+    defender.gainRage(finalDmg * CONFIG.RAGE_GAIN_TAKE_MULT);
+
+    AudioEngine.playHit(!!move.heavy, !!move.blade);
+    FX.spawnHitSparks(hitX, hitY, attacker.accentHex, move.heavy ? 20 : 12, dir);
+    FX.addShake(move.heavy ? 9.5 : 4.5);
+    this.hitstopFrames = move.heavy ? CONFIG.HITSTOP_HEAVY : CONFIG.HITSTOP_LIGHT;
+
+    const label = isCounter ? `-${finalDmg} COUNTER!` : `-${finalDmg}`;
+    FX.spawnPopup(defender.x, defender.y - 108, label, isCounter ? "#fbbf24" : "#ffffff", move.heavy ? 1.15 : 0.95);
+
+    // Check Round-Ending KO!
+    if (defender.hp <= 0) {
+      defender.state = "knockdown";
+      defender.currentMove = null;
+      defender.kdFrames = 0;
+      defender.vx = dir * Math.max(320, move.kbX * 1.25);
+      defender.vy = -340;
+      this.triggerRoundKO(attacker, defender);
+      return;
+    }
+
+    // Super Armor check (Earthshaker / Berserker Whirl / Crescent Gale)
+    const hasArmor = defender.state === "attack" && defender.currentMove && defender.currentMove.superArmor;
+    if (hasArmor && !move.knockdown) {
+      FX.spawnPopup(defender.x, defender.y - 132, "ARMOR!", defender.accentHex, 0.8);
+      return;
+    }
+
+    defender.currentMove = null;
+    if (move.knockdown || !defender.isGrounded()) {
+      defender.state = "knockdown";
+      defender.stateFrames = 0;
+      defender.kdFrames = 0;
+      defender.vx = dir * move.kbX;
+      defender.vy = move.kbY || -260;
+    } else {
+      defender.state = "hit";
+      defender.stateFrames = 0;
+      defender.stunFrames = move.hitstun;
+      defender.vx = dir * move.kbX;
+    }
+  },
+
+  triggerRoundKO(winner, loser) {
+    this.phase = "ko";
+    this.phaseTimer = 2.6;
+    this.slowmoTimer = CONFIG.KO_SLOWMO_DURATION;
+    FX.flashColor = winner.accentHex;
+    FX.flashAlpha = 0.45;
+    FX.addShake(15);
+    AudioEngine.playGong(true);
+
+    if (winner === this.player) this.pWins++;
+    else this.eWins++;
+
+    const isPerfect = winner.hp === winner.maxHp;
+    this.bannerText = "K.O.!";
+    this.bannerSub = isPerfect ? `${winner.name.toUpperCase()} — FLAWLESS SHADOW!` : `${winner.name.toUpperCase()} WINS THE ROUND`;
+    void loser;
+  },
+
+  resolveTimeUp() {
+    this.phase = "ko";
+    this.phaseTimer = 2.4;
+    AudioEngine.playGong(true);
+
+    const pPct = this.player.hp / this.player.maxHp;
+    const ePct = this.enemy.hp / this.enemy.maxHp;
+    if (pPct >= ePct) {
+      this.pWins++;
+      this.player.state = "victory";
+      this.bannerText = "TIME UP!";
+      this.bannerSub = "YOU WIN BY LIFE LEAD";
+    } else {
+      this.eWins++;
+      this.enemy.state = "victory";
+      this.bannerText = "TIME UP!";
+      this.bannerSub = `${this.enemy.name.toUpperCase()} WINS BY LIFE LEAD`;
+    }
+  },
+
+  finishMatch() {
+    this.mode = "result";
+    document.getElementById("btn-pause").style.display = "none";
+    this.updateTouchVisibility();
+
+    const won = this.pWins > this.eWins;
+    let reward = 0;
+    let unlockedNext = false;
+
+    if (this.matchType === "campaign") {
+      if (won) {
+        reward = CONFIG.CAMPAIGN_BASE_REWARD + this.currentStageIdx * CONFIG.CAMPAIGN_REWARD_PER_STAGE;
+        const stageNum = this.currentStageIdx + 1;
+        if (stageNum >= SaveData.highestStage && SaveData.highestStage <= 8) {
+          SaveData.highestStage = stageNum + 1;
+          SaveData.selectedStage = Math.min(8, SaveData.highestStage);
+          unlockedNext = true;
+        }
+      } else {
+        reward = CONFIG.CONSOLATION_REWARD;
+      }
+    } else {
+      reward = won ? CONFIG.QUICK_DUEL_REWARD : Math.round(CONFIG.CONSOLATION_REWARD * 0.8);
+    }
+
+    SaveData.coins += reward;
+    saveProgress();
+    UI.showResultScreen(won, reward, unlockedNext);
+  },
+
+  render() {
+    const ctx = this.ctx;
+    const viewW = this.canvas.width;
+    const viewH = this.canvas.height;
+
+    ctx.save();
+    ctx.fillStyle = "#040408";
+    ctx.fillRect(0, 0, viewW, viewH);
+
+    // Responsive Uniform Scale to fit 1280x720 stage cleanly inside any screen
+    const scale = Math.min(viewW / CONFIG.STAGE_W, viewH / CONFIG.STAGE_H);
+    const offX = (viewW - CONFIG.STAGE_W * scale) * 0.5;
+    const offY = (viewH - CONFIG.STAGE_H * scale) * 0.5;
+
+    ctx.translate(offX, offY);
+    ctx.scale(scale, scale);
+
+    ctx.beginPath();
+    ctx.rect(0, 0, CONFIG.STAGE_W, CONFIG.STAGE_H);
+    ctx.clip();
+
+    // Camera Zoom & Screen Shake Transform around Stage Center
+    ctx.save();
+    ctx.translate(CONFIG.STAGE_W * 0.5 + FX.shakeX, CONFIG.STAGE_H * 0.58 + FX.shakeY);
+    ctx.scale(this.camZoom, this.camZoom);
+    ctx.translate(-CONFIG.STAGE_W * 0.5, -CONFIG.STAGE_H * 0.58);
+
+    // 1. Painted 3-Layer Parallax Arena
+    ArenaRenderer.draw(ctx, this.arenaId, this.camX, this.globalTime, this.eclipseMode);
+
+    // 2. World Space Entities (shifted subtly by foreground camera X)
+    ctx.save();
+    ctx.translate(-this.camX * 0.35, 0);
+
+    // Arena edge stone/wood boundary pillars
+    [CONFIG.ARENA_LEFT - 34, CONFIG.ARENA_RIGHT + 34].forEach((bx) => {
+      ctx.fillStyle = "#06060b";
+      ctx.fillRect(bx - 12, CONFIG.GROUND_Y - 115, 24, 118);
+      ctx.fillStyle = this.eclipseMode ? "#ff1e56" : "#f5b942";
+      ctx.globalAlpha = 0.7;
+      ctx.fillRect(bx - 4, CONFIG.GROUND_Y - 96, 8, 16);
+      ctx.globalAlpha = 1.0;
+    });
+
+    // Draw Fighters (attacking fighter on top for crisp strike readability)
+    if (this.player && this.enemy) {
+      if (this.enemy.state === "attack" && this.player.state !== "attack") {
+        renderFighter(ctx, this.player, this.globalTime);
+        renderFighter(ctx, this.enemy, this.globalTime);
+      } else {
+        renderFighter(ctx, this.enemy, this.globalTime);
+        renderFighter(ctx, this.player, this.globalTime);
+      }
+    }
+
+    // Draw Projectiles & Ground Waves
+    this.drawProjectiles(ctx);
+
+    // Draw Sparks, Dust, Shockwave Rings & Floating Numbers
+    FX.drawWorld(ctx);
+
+    ctx.restore(); // end world shift
+    ctx.restore(); // end camera zoom/shake
+
+    // Screen KO Impact Flash
+    if (FX.flashAlpha > 0) {
+      ctx.fillStyle = FX.flashColor;
+      ctx.globalAlpha = FX.flashAlpha;
+      ctx.fillRect(0, 0, CONFIG.STAGE_W, CONFIG.STAGE_H);
+      ctx.globalAlpha = 1;
+    }
+
+    // Vignette Edge Darkening for cinematic Shadow Fight look
+    const vig = ctx.createRadialGradient(
+      CONFIG.STAGE_W * 0.5, CONFIG.STAGE_H * 0.48, CONFIG.STAGE_W * 0.32,
+      CONFIG.STAGE_W * 0.5, CONFIG.STAGE_H * 0.5, CONFIG.STAGE_W * 0.66
+    );
+    vig.addColorStop(0, "rgba(0,0,0,0)");
+    vig.addColorStop(1, "rgba(0,0,0,0.55)");
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, 0, CONFIG.STAGE_W, CONFIG.STAGE_H);
+
+    // Combat HUD & Round Banners
+    if (this.mode === "fight" || this.mode === "paused" || this.mode === "result") {
+      this.drawHUD(ctx);
+    }
+
+    ctx.restore();
+  },
+
+  drawProjectiles(ctx) {
+    for (const p of this.projectiles) {
+      if (p.delay && p.delay > 0) {
+        // Ground warning telegraph glow before spike erupts
+        ctx.save();
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = 0.55;
+        ctx.fillRect(p.x - 18, CONFIG.GROUND_Y - 4, 36, 5);
+        ctx.restore();
+        continue;
+      }
+
+      ctx.save();
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur = 14;
+      if (p.type === "kunai") {
+        const dir = Math.sign(p.vx) || 1;
+        ctx.translate(p.x, p.y);
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(16 * dir, 0);
+        ctx.lineTo(-8 * dir, -5);
+        ctx.lineTo(-4 * dir, 0);
+        ctx.lineTo(-8 * dir, 5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      } else if (p.type === "wave") {
+        const dir = Math.sign(p.vx) || 1;
+        ctx.translate(p.x, p.y);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(0, 0, p.r, -Math.PI * 0.42, Math.PI * 0.42, dir < 0);
+        ctx.quadraticCurveTo(-8 * dir, 0, 0, -p.r * 0.85);
+        ctx.fill();
+      } else if (p.type === "spike") {
+        ctx.fillStyle = "#080810";
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(p.x - 22, CONFIG.GROUND_Y + 2);
+        ctx.lineTo(p.x + 4, CONFIG.GROUND_Y - 78);
+        ctx.lineTo(p.x + 22, CONFIG.GROUND_Y + 2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  },
+
+  drawHUD(ctx) {
+    if (!this.player || !this.enemy) return;
+    const W = CONFIG.STAGE_W;
+
+    // Center Round Timer Box
+    ctx.save();
+    ctx.fillStyle = "rgba(8, 8, 14, 0.84)";
+    ctx.strokeStyle = "rgba(245, 185, 66, 0.55)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(W * 0.5 - 44, 18, 88, 54, 10);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = this.roundTimer <= 10 ? "#ff2e55" : "#ffffff";
+    ctx.font = '900 28px "Segoe UI", sans-serif';
+    ctx.textAlign = "center";
+    ctx.fillText(Math.ceil(this.roundTimer).toString(), W * 0.5, 55);
+
+    // Player (Left) & Opponent (Right) Bars
+    this.drawFighterHUD(ctx, this.player, 56, 24, 495, false, this.pWins);
+    this.drawFighterHUD(ctx, this.enemy, W - 56 - 495, 24, 495, true, this.eWins);
+
+    // Combo Callout Badge
+    if (this.player.comboCounter >= 2) {
+      ctx.fillStyle = this.player.accentHex;
+      ctx.font = '900 22px "Segoe UI", sans-serif';
+      ctx.textAlign = "left";
+      ctx.fillText(`${this.player.comboCounter} HIT COMBO!`, 60, 132);
+    }
+    if (this.enemy.comboCounter >= 2) {
+      ctx.fillStyle = this.enemy.accentHex;
+      ctx.font = '900 22px "Segoe UI", sans-serif';
+      ctx.textAlign = "right";
+      ctx.fillText(`${this.enemy.comboCounter} HIT COMBO!`, W - 60, 132);
+    }
+
+    // Center Dramatic Round / KO Banner
+    if (this.bannerText) {
+      ctx.save();
+      ctx.fillStyle = "rgba(5, 5, 10, 0.68)";
+      ctx.fillRect(0, 268, W, 118);
+      ctx.strokeStyle = "rgba(245, 185, 66, 0.45)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(0, 268); ctx.lineTo(W, 268);
+      ctx.moveTo(0, 386); ctx.lineTo(W, 386);
+      ctx.stroke();
+
+      ctx.font = '900 58px "Segoe UI", sans-serif';
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#f5b942";
+      ctx.shadowColor = "rgba(255, 46, 85, 0.7)";
+      ctx.shadowBlur = 18;
+      ctx.fillText(this.bannerText, W * 0.5, 336);
+
+      if (this.bannerSub) {
+        ctx.shadowBlur = 0;
+        ctx.font = '700 16px "Segoe UI", sans-serif';
+        ctx.fillStyle = "#e5e7eb";
+        ctx.fillText(this.bannerSub, W * 0.5, 368);
+      }
+      ctx.restore();
+    }
+    ctx.restore();
+  },
+
+  drawFighterHUD(ctx, f, x, y, w, alignRight, wins) {
+    const hpRatio = Math.max(0, f.hp / f.maxHp);
+    const trailRatio = Math.max(0, f.displayHp / f.maxHp);
+    const rageRatio = Math.max(0, f.rage / CONFIG.RAGE_MAX);
+
+    // Name & Round Win Orbs
+    ctx.font = '800 15px "Segoe UI", sans-serif';
+    ctx.fillStyle = "#f9fafb";
+    ctx.textAlign = alignRight ? "right" : "left";
+    const nameX = alignRight ? x + w : x;
+    ctx.fillText(f.name.toUpperCase(), nameX, y + 12);
+
+    // Best-of-3 Round Orbs
+    for (let r = 0; r < CONFIG.ROUNDS_TO_WIN; r++) {
+      const ox = alignRight ? (x + 14 + r * 20) : (x + w - 14 - r * 20);
+      ctx.beginPath();
+      ctx.arc(ox, y + 7, 6.5, 0, Math.PI * 2);
+      ctx.fillStyle = r < wins ? "#f5b942" : "rgba(255,255,255,0.15)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.4)";
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+    }
+
+    // Health Bar Background
+    const barY = y + 20;
+    const barH = 22;
+    ctx.fillStyle = "rgba(10, 10, 18, 0.85)";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.24)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(x, barY, w, barH, 5);
+    ctx.fill();
+
+    // Delayed white/gold damage trail bar
+    const tw = w * trailRatio;
+    ctx.fillStyle = "rgba(251, 191, 36, 0.75)";
+    ctx.fillRect(alignRight ? x + w - tw : x, barY + 2, tw, barH - 4);
+
+    // Active Crimson/Accent Health Fill
+    const hw = w * hpRatio;
+    const hg = ctx.createLinearGradient(x, barY, x, barY + barH);
+    hg.addColorStop(0, f.isPlayer ? "#ef4444" : "#f43f5e");
+    hg.addColorStop(1, f.isPlayer ? "#991b1b" : "#881337");
+    ctx.fillStyle = hg;
+    ctx.fillRect(alignRight ? x + w - hw : x, barY + 2, hw, barH - 4);
+    ctx.stroke();
+
+    // Rage Meter (2 segments of 50 Rage)
+    const ry = barY + 28;
+    const rw = w * 0.72;
+    const rx = alignRight ? x + w - rw : x;
+    ctx.fillStyle = "rgba(10, 10, 18, 0.82)";
+    ctx.fillRect(rx, ry, rw, 9);
+
+    const fillW = rw * rageRatio;
+    ctx.fillStyle = f.rage >= CONFIG.SPECIAL_RAGE_COST ? f.accentHex : "#6366f1";
+    ctx.fillRect(alignRight ? rx + rw - fillW : rx, ry, fillW, 9);
+
+    // 50% Rage threshold divider mark
+    ctx.strokeStyle = "rgba(255,255,255,0.55)";
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(rx, ry, rw, 9);
+    ctx.beginPath();
+    ctx.moveTo(rx + rw * 0.5, ry);
+    ctx.lineTo(rx + rw * 0.5, ry + 9);
+    ctx.stroke();
+
+    // Kunai Ammo Pips
+    for (let k = 0; k < CONFIG.RANGED_MAX_AMMO; k++) {
+      const kx = alignRight ? (x + 12 + k * 18) : (x + w - 12 - k * 18);
+      ctx.fillStyle = k < f.ammo ? "#38bdf8" : "rgba(255,255,255,0.16)";
+      ctx.beginPath();
+      ctx.moveTo(kx, ry - 1);
+      ctx.lineTo(kx + 6, ry + 4.5);
+      ctx.lineTo(kx, ry + 10);
+      ctx.lineTo(kx - 6, ry + 4.5);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+};
+
+/* ============================================================================
+   10. UI & MENUS — CAMPAIGN MAP, QUICK DUEL, ARMORY UPGRADES & SETTINGS
+   ============================================================================ */
+const UI = {
+  init() {
+    // Top Quick Buttons
+    document.getElementById("btn-mute").addEventListener("click", () => {
+      AudioEngine.unlock();
+      SaveData.settings.sound = !SaveData.settings.sound;
+      saveProgress();
+      AudioEngine.syncVolume();
+      this.syncSettingsControls();
+    });
+
+    document.getElementById("btn-pause").addEventListener("click", () => {
+      AudioEngine.playUI();
+      Game.togglePause();
+    });
+
+    // Main Menu Navigation
+    document.getElementById("nav-campaign").addEventListener("click", () => {
+      AudioEngine.unlock(); AudioEngine.playUI(true);
+      this.openCampaign();
+    });
+    document.getElementById("nav-quick").addEventListener("click", () => {
+      AudioEngine.unlock(); AudioEngine.playUI(true);
+      this.showScreen("screen-quick");
+    });
+    document.getElementById("nav-armory").addEventListener("click", () => {
+      AudioEngine.unlock(); AudioEngine.playUI(true);
+      this.openArmory();
+    });
+    document.getElementById("nav-settings").addEventListener("click", () => {
+      AudioEngine.unlock(); AudioEngine.playUI(true);
+      Game.settingsReturnTo = "menu";
+      this.syncSettingsControls();
+      this.showScreen("screen-settings");
+    });
+
+    document.querySelectorAll("[data-back='menu']").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        AudioEngine.playUI();
+        this.openMainMenu();
+      });
+    });
+
+    // Campaign Buttons
+    document.getElementById("camp-armory-btn").addEventListener("click", () => {
+      AudioEngine.playUI(true);
+      this.openArmory();
+    });
+    document.getElementById("camp-fight-btn").addEventListener("click", () => {
+      AudioEngine.playUI(true);
+      const idx = Math.max(0, Math.min(7, (SaveData.selectedStage || 1) - 1));
+      Game.startCampaignMatch(idx);
+    });
+
+    // Quick Duel Start
+    document.getElementById("qd-start-btn").addEventListener("click", () => {
+      AudioEngine.playUI(true);
+      const arena = document.getElementById("qd-arena").value;
+      const diff = parseInt(document.getElementById("qd-diff").value, 10) || 1;
+      const wep = document.getElementById("qd-weapon").value;
+      Game.startQuickMatch(arena, diff, wep);
+    });
+
+    // Settings Controls
+    document.getElementById("set-sound").addEventListener("change", (e) => {
+      SaveData.settings.sound = e.target.value === "on";
+      saveProgress();
+      AudioEngine.syncVolume();
+    });
+    document.getElementById("set-volume").addEventListener("input", (e) => {
+      const v = parseInt(e.target.value, 10) / 100;
+      SaveData.settings.volume = v;
+      document.getElementById("vol-label").textContent = `${Math.round(v * 100)}%`;
+      saveProgress();
+      AudioEngine.syncVolume();
+    });
+    document.getElementById("set-touch").addEventListener("change", (e) => {
+      SaveData.settings.touchMode = e.target.value;
+      saveProgress();
+      Game.updateTouchVisibility();
+    });
+    document.getElementById("settings-back-btn").addEventListener("click", () => {
+      AudioEngine.playUI();
+      if (Game.settingsReturnTo === "pause") {
+        this.showScreen("screen-pause");
+      } else {
+        this.openMainMenu();
+      }
+    });
+    document.getElementById("btn-reset-save").addEventListener("click", () => {
+      if (window.confirm("Reset all coins, unlocked weapons, armor upgrades, and campaign progress?")) {
+        SaveData = createDefaultSave();
+        saveProgress();
+        AudioEngine.syncVolume();
+        this.syncSettingsControls();
+        this.refreshMenuHeader();
+      }
+    });
+
+    // Pause Overlay Actions
+    document.getElementById("pause-resume").addEventListener("click", () => {
+      AudioEngine.playUI(true);
+      Game.togglePause();
+    });
+    document.getElementById("pause-restart").addEventListener("click", () => {
+      AudioEngine.playUI(true);
+      Game.beginMatch();
+    });
+    document.getElementById("pause-settings").addEventListener("click", () => {
+      AudioEngine.playUI();
+      Game.settingsReturnTo = "pause";
+      this.syncSettingsControls();
+      this.showScreen("screen-settings");
+    });
+    document.getElementById("pause-quit").addEventListener("click", () => {
+      AudioEngine.playUI();
+      document.getElementById("btn-pause").style.display = "none";
+      this.openMainMenu();
+    });
+
+    // Post-Match Result Actions
+    document.getElementById("res-next").addEventListener("click", () => {
+      AudioEngine.playUI(true);
+      this.openCampaign();
+    });
+    document.getElementById("res-rematch").addEventListener("click", () => {
+      AudioEngine.playUI(true);
+      Game.beginMatch();
+    });
+    document.getElementById("res-armory").addEventListener("click", () => {
+      AudioEngine.playUI(true);
+      this.openArmory();
+    });
+    document.getElementById("res-menu").addEventListener("click", () => {
+      AudioEngine.playUI();
+      this.openMainMenu();
+    });
+
+    this.refreshMenuHeader();
+    this.syncSettingsControls();
+  },
+
+  hideAllScreens() {
+    document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
+  },
+
+  showScreen(id) {
+    this.hideAllScreens();
+    const el = document.getElementById(id);
+    if (el) el.classList.add("active");
+  },
+
+  openMainMenu() {
+    Game.mode = "menu";
+    Game.setupMenuShowcase();
+    Game.updateTouchVisibility();
+    this.refreshMenuHeader();
+    this.showScreen("screen-menu");
+  },
+
+  refreshMenuHeader() {
+    document.getElementById("menu-coins").textContent = SaveData.coins;
+    const stg = SaveData.highestStage > 8 ? "CLEARED (8/8)" : `${SaveData.highestStage} / 8`;
+    document.getElementById("menu-stage").textContent = stg;
+    document.getElementById("menu-weapon").textContent = WEAPONS[SaveData.equippedWeapon].name;
+  },
+
+  openCampaign() {
+    Game.mode = "menu";
+    Game.updateTouchVisibility();
+    document.getElementById("camp-coins").textContent = SaveData.coins;
+
+    const maxUnlocked = Math.min(8, SaveData.highestStage);
+    if (!SaveData.selectedStage || SaveData.selectedStage > maxUnlocked) {
+      SaveData.selectedStage = maxUnlocked;
+    }
+
+    const grid = document.getElementById("campaign-grid");
+    grid.innerHTML = "";
+
+    CAMPAIGN_FIGHTERS.forEach((cf) => {
+      const unlocked = cf.stage <= maxUnlocked;
+      const cleared = cf.stage < SaveData.highestStage;
+      const card = document.createElement("div");
+      card.className = "stage-card" +
+        (unlocked ? "" : " locked") +
+        (cf.stage === SaveData.selectedStage ? " selected" : "");
+
+      const reward = CONFIG.CAMPAIGN_BASE_REWARD + (cf.stage - 1) * CONFIG.CAMPAIGN_REWARD_PER_STAGE;
+      card.innerHTML = `
+        <div class="stage-num">${cf.isBoss ? "FINAL BOSS" : `Fight ${cf.stage}`} ${cleared ? "✓" : ""}</div>
+        <div class="stage-name" style="color:${unlocked ? "#fff" : "#9ca3af"}">${unlocked ? cf.name : "???"}</div>
+        <div class="stage-meta">${cf.title}</div>
+        <div class="stage-meta" style="margin-top:4px;">Weapon: ${WEAPONS[cf.weapon].name.split(" ").pop()} &bull; <span class="coin-text">+${reward}</span></div>
+      `;
+
+      if (unlocked) {
+        card.addEventListener("click", () => {
+          AudioEngine.playUI();
+          SaveData.selectedStage = cf.stage;
+          saveProgress();
+          this.openCampaign();
+        });
+      }
+      grid.appendChild(card);
+    });
+
+    const sel = CAMPAIGN_FIGHTERS[(SaveData.selectedStage || 1) - 1];
+    document.getElementById("story-title").textContent = `Fight ${sel.stage}: ${sel.name} — ${sel.title}`;
+    document.getElementById("story-arena").textContent = `Arena: ${ARENAS[sel.arena].name}${sel.eclipse ? " (Blood Eclipse)" : ""}`;
+    document.getElementById("story-text").textContent = sel.story;
+
+    this.showScreen("screen-campaign");
+  },
+
+  openArmory() {
+    Game.mode = "menu";
+    Game.setupMenuShowcase();
+    Game.updateTouchVisibility();
+    this.renderArmoryDOM();
+    this.showScreen("screen-armory");
+  },
+
+  renderArmoryDOM() {
+    document.getElementById("armory-coins").textContent = SaveData.coins;
+    const ps = Game.getPlayerStats();
+
+    // Update Armory Dummy Fighter for live preview canvas
+    Game.armoryDummy = new Fighter({
+      isPlayer: true, name: "Preview", x: 110, facing: 1, ...ps
+    });
+    Game.armoryDummy.y = 222;
+
+    document.getElementById("armory-stats").innerHTML = `
+      <div class="stat-row"><span>Max Health</span><strong>${ps.maxHp} HP</strong></div>
+      <div class="stat-row"><span>Attack Power</span><strong>${Math.round(ps.dmgScale * 100)}%</strong></div>
+      <div class="stat-row"><span>Damage Reduction</span><strong>${Math.round(ps.defReduction * 100)}%</strong></div>
+      <div class="stat-row"><span>Weapon Reach</span><strong>${WEAPONS[ps.weaponId].reach}</strong></div>
+    `;
+
+    // Spirit Accent Swatches
+    const swatchRow = document.getElementById("accent-swatches");
+    swatchRow.innerHTML = "";
+    ACCENTS.forEach((acc) => {
+      const s = document.createElement("button");
+      s.className = "swatch" + (SaveData.accentId === acc.id ? " active" : "");
+      s.style.background = acc.hex;
+      s.style.color = acc.hex;
+      s.title = acc.name;
+      s.addEventListener("click", () => {
+        AudioEngine.playUI(true);
+        SaveData.accentId = acc.id;
+        saveProgress();
+        Game.setupMenuShowcase();
+        this.renderArmoryDOM();
+      });
+      swatchRow.appendChild(s);
+    });
+
+    // Weapons Cards
+    const wGrid = document.getElementById("weapon-grid");
+    wGrid.innerHTML = "";
+    Object.values(WEAPONS).forEach((w) => {
+      const owned = !!SaveData.unlockedWeapons[w.id];
+      const equipped = SaveData.equippedWeapon === w.id;
+      const lv = SaveData.weaponLevels[w.id] || 1;
+      const upCost = Math.round(w.upgradeBaseCost * Math.pow(1.45, lv - 1));
+
+      const card = document.createElement("div");
+      card.className = "item-card" + (equipped ? " equipped" : "");
+      card.innerHTML = `
+        <div>
+          <div class="item-title">
+            <span>${w.name}</span>
+            <span class="badge">${owned ? `LV ${lv}/${CONFIG.MAX_UPGRADE_LEVEL}` : `${w.cost} COINS`}</span>
+          </div>
+          <div class="item-desc" style="margin-top:4px;">${w.desc}</div>
+        </div>
+        <div class="item-actions"></div>
+      `;
+      const actions = card.querySelector(".item-actions");
+
+      if (!owned) {
+        const buyBtn = document.createElement("button");
+        buyBtn.className = "btn btn-sm btn-gold";
+        buyBtn.textContent = `Buy (${w.cost})`;
+        buyBtn.disabled = SaveData.coins < w.cost;
+        buyBtn.addEventListener("click", () => {
+          if (SaveData.coins >= w.cost) {
+            SaveData.coins -= w.cost;
+            SaveData.unlockedWeapons[w.id] = true;
+            SaveData.equippedWeapon = w.id;
+            AudioEngine.playBlock(true);
+            saveProgress();
+            this.renderArmoryDOM();
+          }
+        });
+        actions.appendChild(buyBtn);
+      } else {
+        const eqBtn = document.createElement("button");
+        eqBtn.className = "btn btn-sm" + (equipped ? " btn-primary" : "");
+        eqBtn.textContent = equipped ? "Equipped" : "Equip";
+        eqBtn.disabled = equipped;
+        eqBtn.addEventListener("click", () => {
+          SaveData.equippedWeapon = w.id;
+          AudioEngine.playUI(true);
+          saveProgress();
+          this.renderArmoryDOM();
+        });
+        actions.appendChild(eqBtn);
+
+        if (lv < CONFIG.MAX_UPGRADE_LEVEL) {
+          const upBtn = document.createElement("button");
+          upBtn.className = "btn btn-sm btn-gold";
+          upBtn.textContent = `Upgrade (${upCost})`;
+          upBtn.disabled = SaveData.coins < upCost;
+          upBtn.addEventListener("click", () => {
+            if (SaveData.coins >= upCost) {
+              SaveData.coins -= upCost;
+              SaveData.weaponLevels[w.id] = lv + 1;
+              AudioEngine.playBlock(true);
+              saveProgress();
+              this.renderArmoryDOM();
+            }
+          });
+          actions.appendChild(upBtn);
+        }
+      }
+      wGrid.appendChild(card);
+    });
+
+    // Armor Cards
+    const aGrid = document.getElementById("armor-grid");
+    aGrid.innerHTML = "";
+    Object.values(ARMORS).forEach((a) => {
+      const owned = !!SaveData.unlockedArmors[a.id];
+      const equipped = SaveData.equippedArmor === a.id;
+      const lv = SaveData.armorLevels[a.id] || 1;
+      const upCost = Math.round(a.upgradeBaseCost * Math.pow(1.45, lv - 1));
+
+      const card = document.createElement("div");
+      card.className = "item-card" + (equipped ? " equipped" : "");
+      card.innerHTML = `
+        <div>
+          <div class="item-title">
+            <span>${a.name}</span>
+            <span class="badge">${owned ? `LV ${lv}/${CONFIG.MAX_UPGRADE_LEVEL}` : `${a.cost} COINS`}</span>
+          </div>
+          <div class="item-desc" style="margin-top:4px;">${a.desc}</div>
+        </div>
+        <div class="item-actions"></div>
+      `;
+      const actions = card.querySelector(".item-actions");
+
+      if (!owned) {
+        const buyBtn = document.createElement("button");
+        buyBtn.className = "btn btn-sm btn-gold";
+        buyBtn.textContent = `Buy (${a.cost})`;
+        buyBtn.disabled = SaveData.coins < a.cost;
+        buyBtn.addEventListener("click", () => {
+          if (SaveData.coins >= a.cost) {
+            SaveData.coins -= a.cost;
+            SaveData.unlockedArmors[a.id] = true;
+            SaveData.equippedArmor = a.id;
+            AudioEngine.playBlock(true);
+            saveProgress();
+            this.renderArmoryDOM();
+          }
+        });
+        actions.appendChild(buyBtn);
+      } else {
+        const eqBtn = document.createElement("button");
+        eqBtn.className = "btn btn-sm" + (equipped ? " btn-primary" : "");
+        eqBtn.textContent = equipped ? "Equipped" : "Equip";
+        eqBtn.disabled = equipped;
+        eqBtn.addEventListener("click", () => {
+          SaveData.equippedArmor = a.id;
+          AudioEngine.playUI(true);
+          saveProgress();
+          this.renderArmoryDOM();
+        });
+        actions.appendChild(eqBtn);
+
+        if (lv < CONFIG.MAX_UPGRADE_LEVEL) {
+          const upBtn = document.createElement("button");
+          upBtn.className = "btn btn-sm btn-gold";
+          upBtn.textContent = `Temper (${upCost})`;
+          upBtn.disabled = SaveData.coins < upCost;
+          upBtn.addEventListener("click", () => {
+            if (SaveData.coins >= upCost) {
+              SaveData.coins -= upCost;
+              SaveData.armorLevels[a.id] = lv + 1;
+              AudioEngine.playBlock(true);
+              saveProgress();
+              this.renderArmoryDOM();
+            }
+          });
+          actions.appendChild(upBtn);
+        }
+      }
+      aGrid.appendChild(card);
+    });
+  },
+
+  renderArmoryPreview(timeSec) {
+    const screen = document.getElementById("screen-armory");
+    if (!screen.classList.contains("active") || !Game.armoryDummy) return;
+    const ctx = Game.armoryCtx;
+    const d = Game.armoryDummy;
+    ctx.clearRect(0, 0, 220, 250);
+
+    // Subtle glowing pedestal
+    const grad = ctx.createRadialGradient(110, 224, 6, 110, 224, 72);
+    grad.addColorStop(0, d.accentHex + "55");
+    grad.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 150, 220, 100);
+
+    d.animTime = timeSec;
+    d.rage = 65; // show spirit aura in preview
+    const basePose = POSES["idle_" + d.weaponId] || POSES.idle_sword;
+    const breath = (Math.sin(timeSec * 3.4) + 1) * 0.5;
+    d.currentPose = interpolatePoses(basePose, POSES.idle_breath, breath * 0.5);
+
+    // Temporarily compute skeleton at preview ground y = 222
+    const savedGround = CONFIG.GROUND_Y;
+    CONFIG.GROUND_Y = 222;
+    d.y = 222;
+    d.skeleton = computeSkeleton(d, d.currentPose);
+    renderFighter(ctx, d, timeSec);
+    CONFIG.GROUND_Y = savedGround;
+  },
+
+  syncSettingsControls() {
+    document.getElementById("set-sound").value = SaveData.settings.sound ? "on" : "off";
+    document.getElementById("set-volume").value = Math.round(SaveData.settings.volume * 100);
+    document.getElementById("vol-label").textContent = `${Math.round(SaveData.settings.volume * 100)}%`;
+    document.getElementById("set-touch").value = SaveData.settings.touchMode;
+  },
+
+  showResultScreen(won, reward, unlockedNext) {
+    const banner = document.getElementById("res-banner");
+    const sub = document.getElementById("res-subtitle");
+    banner.textContent = won ? "VICTORY" : "DEFEAT";
+
+    if (Game.matchType === "campaign" && won && Game.currentStageIdx === 7) {
+      sub.textContent = "Lord Malakor has fallen! The Obsidian Gate is sealed forever!";
+    } else if (won) {
+      sub.textContent = unlockedNext ? `${Game.enemy.name} defeated — Next Warden Unlocked!` : `${Game.enemy.name} defeated!`;
+    } else {
+      sub.textContent = `${Game.enemy.name} prevailed. Visit the Armory to temper your blade!`;
+    }
+
+    document.getElementById("res-stats").innerHTML = `
+      <div class="stat-row"><span>Final Score (Rounds)</span><strong>${Game.pWins} — ${Game.eWins}</strong></div>
+      <div class="stat-row"><span>Damage Dealt</span><strong>${Game.player.damageDealtTotal}</strong></div>
+      <div class="stat-row"><span>Max Hit Combo</span><strong>${Game.player.maxCombo}</strong></div>
+      <div class="stat-row"><span>Perfect Parries</span><strong>${Game.player.parriesLanded}</strong></div>
+      <div class="stat-row"><span>Coins Earned</span><strong class="coin-text">+${reward} Coins (Total: ${SaveData.coins})</strong></div>
+    `;
+
+    const nextBtn = document.getElementById("res-next");
+    nextBtn.style.display = Game.matchType === "campaign" ? "block" : "none";
+    nextBtn.textContent = (SaveData.highestStage > 8) ? "Campaign Map" : "Next Campaign Fight";
+
+    this.showScreen("screen-result");
+  }
+};
+
+window.addEventListener("DOMContentLoaded", () => {
+  Game.init();
+});
+</script>
+</body>
+</html>
