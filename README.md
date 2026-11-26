@@ -1,4 +1,4 @@
-# Umbra Duel — Shadows of the Broken Seal
+# Shadow Royale — Shadows of the Broken Seal
 
 A single-file 2D side-view silhouette martial-arts and weapon fighting game built with **HTML5 Canvas** and **vanilla JavaScript** (zero external libraries, images, or audio files).
 
